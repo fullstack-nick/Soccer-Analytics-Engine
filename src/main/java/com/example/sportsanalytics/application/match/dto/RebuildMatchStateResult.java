@@ -6,6 +6,7 @@ public record RebuildMatchStateResult(
         UUID matchId,
         int stateSnapshotsCreated,
         int featureSnapshotsCreated,
+        int probabilitySnapshotsCreated,
         long latestStateVersion
 ) {
 }

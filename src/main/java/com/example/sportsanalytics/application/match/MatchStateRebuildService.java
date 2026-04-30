@@ -55,6 +55,7 @@ public class MatchStateRebuildService {
     private final EventSourcedMatchStateProjector stateProjector;
     private final ProviderFeatureContextExtractor providerFeatureContextExtractor;
     private final MatchFeatureExtractor featureExtractor;
+    private final ProbabilityRebuildService probabilityRebuildService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -69,11 +70,12 @@ public class MatchStateRebuildService {
             EventSourcedMatchStateProjector stateProjector,
             ProviderFeatureContextExtractor providerFeatureContextExtractor,
             MatchFeatureExtractor featureExtractor,
+            ProbabilityRebuildService probabilityRebuildService,
             ObjectMapper objectMapper
     ) {
         this(matchRepository, matchEventRepository, matchStateRepository, featureSnapshotRepository, rawPayloadRepository,
-                metadataMapper, stateProjector, providerFeatureContextExtractor, featureExtractor, objectMapper,
-                Clock.systemUTC());
+                metadataMapper, stateProjector, providerFeatureContextExtractor, featureExtractor,
+                probabilityRebuildService, objectMapper, Clock.systemUTC());
     }
 
     MatchStateRebuildService(
@@ -86,6 +88,7 @@ public class MatchStateRebuildService {
             EventSourcedMatchStateProjector stateProjector,
             ProviderFeatureContextExtractor providerFeatureContextExtractor,
             MatchFeatureExtractor featureExtractor,
+            ProbabilityRebuildService probabilityRebuildService,
             ObjectMapper objectMapper,
             Clock clock
     ) {
@@ -98,6 +101,7 @@ public class MatchStateRebuildService {
         this.stateProjector = stateProjector;
         this.providerFeatureContextExtractor = providerFeatureContextExtractor;
         this.featureExtractor = featureExtractor;
+        this.probabilityRebuildService = probabilityRebuildService;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -164,7 +168,8 @@ public class MatchStateRebuildService {
             featureCount++;
         }
 
-        return new RebuildMatchStateResult(match.getId(), stateSnapshots.size(), featureCount, latestVersion);
+        int probabilityCount = probabilityRebuildService.rebuild(match.getId()).probabilitySnapshotsCreated();
+        return new RebuildMatchStateResult(match.getId(), stateSnapshots.size(), featureCount, probabilityCount, latestVersion);
     }
 
     @Transactional(readOnly = true)

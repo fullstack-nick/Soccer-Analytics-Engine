@@ -4,7 +4,9 @@ import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
+import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
+import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
 import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
@@ -56,6 +58,12 @@ public class MatchTrackingController {
         return matchTrackingUseCase.rebuildState(matchId);
     }
 
+    @Operation(summary = "Rebuild persisted probability snapshots from stored state and feature snapshots")
+    @PostMapping("/{matchId}/probabilities/rebuild")
+    public RebuildProbabilityResult rebuildProbabilities(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.rebuildProbabilities(matchId);
+    }
+
     @Operation(summary = "Return persisted state timeline for a stored match")
     @GetMapping("/{matchId}/states")
     public List<MatchStateView> states(@PathVariable UUID matchId) {
@@ -81,5 +89,17 @@ public class MatchTrackingController {
     @GetMapping("/{matchId}/features/latest")
     public FeatureSnapshotView latestFeature(@PathVariable UUID matchId) {
         return matchTrackingUseCase.latestFeature(matchId);
+    }
+
+    @Operation(summary = "Return probability snapshot timeline for a stored match")
+    @GetMapping("/{matchId}/probabilities")
+    public List<ProbabilitySnapshotView> probabilities(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.probabilities(matchId);
+    }
+
+    @Operation(summary = "Return latest probability snapshot for a stored match")
+    @GetMapping("/{matchId}/probabilities/latest")
+    public ProbabilitySnapshotView latestProbability(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.latestProbability(matchId);
     }
 }

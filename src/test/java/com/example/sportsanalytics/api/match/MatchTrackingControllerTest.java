@@ -12,7 +12,9 @@ import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
+import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
+import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TeamView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
@@ -63,6 +65,7 @@ class MatchTrackingControllerTest {
                 .andExpect(jsonPath("$.coverageMode").value("RICH"))
                 .andExpect(jsonPath("$.stateSnapshotsCreated").value(4))
                 .andExpect(jsonPath("$.featureSnapshotsCreated").value(4))
+                .andExpect(jsonPath("$.probabilitySnapshotsCreated").value(4))
                 .andExpect(jsonPath("$.eventsInserted").value(4))
                 .andExpect(jsonPath("$.rawPayloadsFetched", contains("summary", "extended_timeline")));
     }
@@ -83,7 +86,16 @@ class MatchTrackingControllerTest {
                 .andExpect(jsonPath("$.matchId").value(MATCH_ID.toString()))
                 .andExpect(jsonPath("$.stateSnapshotsCreated").value(4))
                 .andExpect(jsonPath("$.featureSnapshotsCreated").value(4))
+                .andExpect(jsonPath("$.probabilitySnapshotsCreated").value(4))
                 .andExpect(jsonPath("$.latestStateVersion").value(4));
+    }
+
+    @Test
+    void rebuildsProbabilities() throws Exception {
+        mockMvc.perform(post("/api/matches/{matchId}/probabilities/rebuild", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchId").value(MATCH_ID.toString()))
+                .andExpect(jsonPath("$.probabilitySnapshotsCreated").value(4));
     }
 
     @Test
@@ -119,6 +131,24 @@ class MatchTrackingControllerTest {
     }
 
     @Test
+    void returnsProbabilitySnapshots() throws Exception {
+        mockMvc.perform(get("/api/matches/{matchId}/probabilities", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].homeWin").value(0.72))
+                .andExpect(jsonPath("$[0].modelVersion").value("xg-poisson-v1"))
+                .andExpect(jsonPath("$[0].featureContributions.expectedHomeGoalsRemaining").value(0.4));
+    }
+
+    @Test
+    void returnsLatestProbabilitySnapshot() throws Exception {
+        mockMvc.perform(get("/api/matches/{matchId}/probabilities/latest", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.homeWin").value(0.72))
+                .andExpect(jsonPath("$.coverageQuality").value("HIGH"));
+    }
+
+    @Test
     void resolvesProviderId() throws Exception {
         mockMvc.perform(get("/api/matches/provider").param("sportEventId", "sr:sport_event:70075140"))
                 .andExpect(status().isOk())
@@ -139,6 +169,7 @@ class MatchTrackingControllerTest {
                             command.sportEventId(),
                             CoverageMode.RICH,
                             1,
+                            4,
                             4,
                             4,
                             new TeamView("sr:competitor:3224", "Home Team"),
@@ -208,7 +239,12 @@ class MatchTrackingControllerTest {
 
                 @Override
                 public RebuildMatchStateResult rebuildState(UUID matchId) {
-                    return new RebuildMatchStateResult(MATCH_ID, 4, 4, 4);
+                    return new RebuildMatchStateResult(MATCH_ID, 4, 4, 4, 4);
+                }
+
+                @Override
+                public RebuildProbabilityResult rebuildProbabilities(UUID matchId) {
+                    return new RebuildProbabilityResult(MATCH_ID, 4);
                 }
 
                 @Override
@@ -231,6 +267,31 @@ class MatchTrackingControllerTest {
                                     "availableFeatures", List.of("scoreDifference"),
                                     "missingFeatures", List.of("providerProbability")
                             ),
+                            Instant.parse("2026-04-30T00:00:00Z")
+                    );
+                }
+
+                @Override
+                public List<ProbabilitySnapshotView> probabilities(UUID matchId) {
+                    return List.of(latestProbability(matchId));
+                }
+
+                @Override
+                public ProbabilitySnapshotView latestProbability(UUID matchId) {
+                    return new ProbabilitySnapshotView(
+                            UUID.fromString("44444444-4444-4444-4444-444444444444"),
+                            MATCH_ID,
+                            UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                            3L,
+                            30,
+                            0.72,
+                            0.18,
+                            0.10,
+                            "xg-poisson-v1",
+                            0.81,
+                            "HIGH",
+                            List.of("Score is 1-0 in minute 30."),
+                            Map.of("expectedHomeGoalsRemaining", 0.4),
                             Instant.parse("2026-04-30T00:00:00Z")
                     );
                 }

@@ -11,6 +11,7 @@ public record TrackMatchResult(
         long stateVersion,
         int stateSnapshotsCreated,
         int featureSnapshotsCreated,
+        int probabilitySnapshotsCreated,
         TeamView homeTeam,
         TeamView awayTeam,
         int minute,

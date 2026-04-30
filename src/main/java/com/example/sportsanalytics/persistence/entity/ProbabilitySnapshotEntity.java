@@ -12,7 +12,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +22,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "probability_snapshots")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class ProbabilitySnapshotEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -49,9 +48,22 @@ public class ProbabilitySnapshotEntity {
     @Column(name = "away_win", nullable = false)
     private double awayWin;
 
+    @Column(name = "model_version", nullable = false, length = 40)
+    private String modelVersion;
+
+    @Column(name = "model_confidence")
+    private Double modelConfidence;
+
+    @Column(name = "coverage_quality", length = 20)
+    private String coverageQuality;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "explanations_json", nullable = false, columnDefinition = "jsonb")
     private JsonNode explanationsJson;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "feature_contributions_json", nullable = false, columnDefinition = "jsonb")
+    private JsonNode featureContributionsJson;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

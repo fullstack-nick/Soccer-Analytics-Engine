@@ -3,7 +3,9 @@ package com.example.sportsanalytics.application.match;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
+import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
+import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TeamView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
@@ -50,6 +52,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     private final CoverageDetector coverageDetector;
     private final SportradarEventNormalizer eventNormalizer;
     private final MatchStateRebuildService rebuildService;
+    private final ProbabilityRebuildService probabilityRebuildService;
     private final MatchRepository matchRepository;
     private final MatchEventRepository matchEventRepository;
     private final MatchStateRepository matchStateRepository;
@@ -64,14 +67,16 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             CoverageDetector coverageDetector,
             SportradarEventNormalizer eventNormalizer,
             MatchStateRebuildService rebuildService,
+            ProbabilityRebuildService probabilityRebuildService,
             MatchRepository matchRepository,
             MatchEventRepository matchEventRepository,
             MatchStateRepository matchStateRepository,
             EntityManager entityManager,
             ObjectMapper objectMapper
     ) {
-        this(sportradarClient, metadataMapper, coverageDetector, eventNormalizer, rebuildService, matchRepository,
-                matchEventRepository, matchStateRepository, entityManager, objectMapper, Clock.systemUTC());
+        this(sportradarClient, metadataMapper, coverageDetector, eventNormalizer, rebuildService,
+                probabilityRebuildService, matchRepository, matchEventRepository, matchStateRepository,
+                entityManager, objectMapper, Clock.systemUTC());
     }
 
     MatchTrackingService(
@@ -80,6 +85,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             CoverageDetector coverageDetector,
             SportradarEventNormalizer eventNormalizer,
             MatchStateRebuildService rebuildService,
+            ProbabilityRebuildService probabilityRebuildService,
             MatchRepository matchRepository,
             MatchEventRepository matchEventRepository,
             MatchStateRepository matchStateRepository,
@@ -92,6 +98,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         this.coverageDetector = coverageDetector;
         this.eventNormalizer = eventNormalizer;
         this.rebuildService = rebuildService;
+        this.probabilityRebuildService = probabilityRebuildService;
         this.matchRepository = matchRepository;
         this.matchEventRepository = matchEventRepository;
         this.matchStateRepository = matchStateRepository;
@@ -156,6 +163,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
                 rebuild.latestStateVersion(),
                 rebuild.stateSnapshotsCreated(),
                 rebuild.featureSnapshotsCreated(),
+                rebuild.probabilitySnapshotsCreated(),
                 team(metadata.homeTeam().id(), metadata.homeTeam().name()),
                 team(metadata.awayTeam().id(), metadata.awayTeam().name()),
                 latestState.getMinute(),
@@ -203,6 +211,12 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     }
 
     @Override
+    @Transactional
+    public RebuildProbabilityResult rebuildProbabilities(UUID matchId) {
+        return probabilityRebuildService.rebuild(matchId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<FeatureSnapshotView> features(UUID matchId) {
         return rebuildService.features(matchId);
@@ -212,6 +226,18 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     @Transactional(readOnly = true)
     public FeatureSnapshotView latestFeature(UUID matchId) {
         return rebuildService.latestFeature(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProbabilitySnapshotView> probabilities(UUID matchId) {
+        return probabilityRebuildService.probabilities(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProbabilitySnapshotView latestProbability(UUID matchId) {
+        return probabilityRebuildService.latestProbability(matchId);
     }
 
     @Override

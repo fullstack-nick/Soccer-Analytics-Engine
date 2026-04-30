@@ -5,9 +5,11 @@ coverage-aware Sportradar ingestion, event-sourced match state, probability
 snapshots, replay, and backtesting.
 
 The current implementation includes the Stage 1 backend foundation, Stage 2
-Sportradar ingestion, and Stage 3 event-sourced state plus feature extraction:
-raw payload storage, cache-aware provider calls, coverage detection, normalized
-timeline events, deterministic state rebuilds, and model-ready feature snapshots.
+Sportradar ingestion, Stage 3 event-sourced state plus feature extraction, and
+Stage 4 explainable probability generation: raw payload storage, cache-aware
+provider calls, coverage detection, normalized timeline events, deterministic
+state rebuilds, model-ready feature snapshots, and persisted win/draw/loss
+probability timelines.
 
 ## Stack
 
@@ -61,13 +63,17 @@ GET /api/matches/{matchId}/events
 GET /api/matches/{matchId}/events?type=GOAL
 GET /api/matches/{matchId}/features
 GET /api/matches/{matchId}/features/latest
+GET /api/matches/{matchId}/probabilities
+GET /api/matches/{matchId}/probabilities/latest
 POST /api/matches/{matchId}/state/rebuild
+POST /api/matches/{matchId}/probabilities/rebuild
 GET /api/matches/provider?sportEventId=sr:sport_event:70075140
 ```
 
 Tracking a match now rebuilds state and features from stored events after
-ingestion. The track response includes `stateSnapshotsCreated` and
-`featureSnapshotsCreated`.
+ingestion, then regenerates probability snapshots. The track response includes
+`stateSnapshotsCreated`, `featureSnapshotsCreated`, and
+`probabilitySnapshotsCreated`.
 
 ## Stage 3 Features
 
@@ -81,6 +87,28 @@ standings/form team strength, lineup adjustment, red-card adjustment, rolling
 xG delta, shot pressure, shot location quality, field tilt, possession pressure,
 momentum trend, provider probability when available, and available/missing
 feature metadata.
+
+## Stage 4 Probability Engine
+
+The probability engine is a pure Java `ProbabilityEngine` implementation named
+`ExpectedGoalsProbabilityEngine`. It uses the current event-sourced score as the
+fixed starting point, estimates remaining expected goals from coverage-aware
+features, then runs a Poisson-style final-score simulation to produce:
+
+- home win probability
+- draw probability
+- away win probability
+- model confidence
+- coverage quality: `HIGH`, `MEDIUM`, or `LOW`
+- explanations
+- signed feature contributions
+
+Provider probability, when available from Sportradar season probabilities, is
+used only as comparison context. It is not blended into this model's output.
+
+Probability snapshots are generated automatically after `POST /api/matches/track`
+and `POST /api/matches/{matchId}/state/rebuild`. They can also be regenerated
+explicitly with `POST /api/matches/{matchId}/probabilities/rebuild`.
 
 ## Configuration
 
@@ -127,11 +155,13 @@ Included:
 - event-sourced state rebuilds from stored events
 - persisted state timeline
 - persisted feature timeline
+- expected-goals/Poisson probability engine
+- persisted probability timeline with explanations and feature contributions
 - match tracking/state/events/features REST API
+- probability REST API
 
 Not included until later stages:
 
 - live polling
 - replay endpoints
-- probability calculation implementation
 - backtesting

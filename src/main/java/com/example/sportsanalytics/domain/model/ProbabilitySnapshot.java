@@ -12,7 +12,9 @@ public record ProbabilitySnapshot(
         int minute,
         Probability probability,
         CoverageMode coverageMode,
+        String modelVersion,
         Double modelConfidence,
+        String coverageQuality,
         List<String> explanations,
         Map<String, Double> featureContributions,
         Instant createdAt
@@ -23,6 +25,12 @@ public record ProbabilitySnapshot(
         }
         probability = Objects.requireNonNull(probability, "probability is required");
         coverageMode = Objects.requireNonNull(coverageMode, "coverageMode is required");
+        if (modelVersion == null || modelVersion.isBlank()) {
+            throw new IllegalArgumentException("modelVersion is required");
+        }
+        if (coverageQuality == null || coverageQuality.isBlank()) {
+            throw new IllegalArgumentException("coverageQuality is required");
+        }
         explanations = List.copyOf(Objects.requireNonNullElse(explanations, List.of()));
         featureContributions = Map.copyOf(Objects.requireNonNullElse(featureContributions, Map.of()));
         if (minute < 0) {
