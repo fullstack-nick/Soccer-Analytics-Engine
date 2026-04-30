@@ -1,0 +1,59 @@
+package com.example.sportsanalytics.api.match;
+
+import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
+import com.example.sportsanalytics.application.match.dto.MatchEventView;
+import com.example.sportsanalytics.application.match.dto.MatchStateView;
+import com.example.sportsanalytics.application.match.dto.StoredMatchView;
+import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
+import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
+import com.example.sportsanalytics.domain.model.MatchEventType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "Matches")
+@RestController
+@RequestMapping("/api/matches")
+public class MatchTrackingController {
+    private final MatchTrackingUseCase matchTrackingUseCase;
+
+    public MatchTrackingController(MatchTrackingUseCase matchTrackingUseCase) {
+        this.matchTrackingUseCase = matchTrackingUseCase;
+    }
+
+    @Operation(summary = "Track one Sportradar sport event and persist normalized match state")
+    @PostMapping("/track")
+    public TrackMatchResult track(@Valid @RequestBody TrackMatchRequest request) {
+        return matchTrackingUseCase.track(new TrackMatchCommand(request.sportEventId(), request.forceRefresh()));
+    }
+
+    @Operation(summary = "Resolve a stored match by Sportradar sport event id")
+    @GetMapping("/provider")
+    public StoredMatchView byProviderId(@RequestParam String sportEventId) {
+        return matchTrackingUseCase.findByProviderMatchId(sportEventId);
+    }
+
+    @Operation(summary = "Return latest projected state for a stored match")
+    @GetMapping("/{matchId}/state")
+    public MatchStateView state(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.latestState(matchId);
+    }
+
+    @Operation(summary = "Return normalized events for a stored match")
+    @GetMapping("/{matchId}/events")
+    public List<MatchEventView> events(
+            @PathVariable UUID matchId,
+            @RequestParam(required = false) MatchEventType type
+    ) {
+        return matchTrackingUseCase.events(matchId, type);
+    }
+}

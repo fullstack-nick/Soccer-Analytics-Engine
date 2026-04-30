@@ -1,0 +1,20 @@
+{
+  "sport_event": {
+    "id": "sr:sport_event:70075140",
+    "start_time": "2026-04-30T18:00:00Z",
+    "sport_event_context": {
+      "season": { "id": "sr:season:138028" },
+      "competition": { "id": "sr:competition:17" }
+    },
+    "competitors": [
+      { "id": "sr:competitor:3224", "name": "Home Team", "qualifier": "home" },
+      { "id": "sr:competitor:266595", "name": "Away Team", "qualifier": "away" }
+    ]
+  },
+  "sport_event_status": {
+    "status": "closed",
+    "match_status": "ended",
+    "home_score": 2,
+    "away_score": 1
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "lineups": {
+    "competitors": [
+      {
+        "id": "sr:competitor:3224",
+        "name": "Home Team",
+        "qualifier": "home",
+        "formation": "4-3-3",
+        "players": [
+          { "id": "sr:player:1", "name": "Passer", "starter": true },
+          { "id": "sr:player:2", "name": "Scorer", "starter": true }
+        ]
+      },
+      {
+        "id": "sr:competitor:266595",
+        "name": "Away Team",
+        "qualifier": "away",
+        "formation": "4-2-3-1",
+        "players": [
+          { "id": "sr:player:3", "name": "Away Player", "starter": true }
+        ]
+      }
+    ]
+  }
+}

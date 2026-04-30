@@ -1,0 +1,18 @@
+{
+  "statistics": {
+    "totals": {
+      "competitors": [
+        {
+          "id": "sr:competitor:3224",
+          "qualifier": "home",
+          "statistics": {
+            "goals_expected": 1.8,
+            "shots_on_target": 5,
+            "passes_total": 410,
+            "ball_possession": 58
+          }
+        }
+      ]
+    }
+  }
+}

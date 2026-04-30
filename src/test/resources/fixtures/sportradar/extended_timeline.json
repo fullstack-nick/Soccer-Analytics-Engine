@@ -1,0 +1,54 @@
+{
+  "timeline": {
+    "event": [
+      {
+        "id": 10,
+        "type": "match_started",
+        "time": "2026-04-30T18:00:00Z",
+        "match_time": 0,
+        "home_score": 0,
+        "away_score": 0
+      },
+      {
+        "id": 11,
+        "type": "pass",
+        "time": "2026-04-30T18:12:00Z",
+        "match_time": 12,
+        "competitor": "home",
+        "x": 34,
+        "y": 56,
+        "destination_x": 61,
+        "destination_y": 45,
+        "outcome": "successful",
+        "players": {
+          "player": [
+            { "id": "sr:player:1", "name": "Passer", "type": "passer" }
+          ]
+        }
+      },
+      {
+        "id": 12,
+        "type": "score_change",
+        "time": "2026-04-30T18:30:00Z",
+        "match_time": 30,
+        "competitor": "home",
+        "home_score": 1,
+        "away_score": 0,
+        "xg_value": 0.33,
+        "players": {
+          "player": [
+            { "id": "sr:player:2", "name": "Scorer", "type": "scorer" }
+          ]
+        }
+      },
+      {
+        "id": 13,
+        "type": "red_card",
+        "time": "2026-04-30T19:05:00Z",
+        "match_time": 65,
+        "competitor": "away",
+        "card_description": "red card"
+      }
+    ]
+  }
+}

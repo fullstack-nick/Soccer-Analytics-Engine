@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: 'postgres:16-alpine'
+    container_name: soccer-intelligence-postgres
+    environment:
+      POSTGRES_DB: soccer_intelligence
+      POSTGRES_USER: soccer
+      POSTGRES_PASSWORD: soccer
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soccer -d soccer_intelligence"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    profiles: ["app"]
+    build: .
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/soccer_intelligence
+      SPRING_DATASOURCE_USERNAME: soccer
+      SPRING_DATASOURCE_PASSWORD: soccer
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      SPORTRADAR_API_KEY: ${SPORTRADAR_API_KEY:-}
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy

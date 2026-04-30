@@ -1,0 +1,27 @@
+stages:
+  - test
+  - build
+
+image: eclipse-temurin:21-jdk
+
+cache:
+  key: maven
+  paths:
+    - .m2/repository
+
+before_script:
+  - chmod +x mvnw
+
+test:
+  stage: test
+  script:
+    - ./mvnw -B test
+
+build:
+  stage: build
+  script:
+    - ./mvnw -B -DskipTests package
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week

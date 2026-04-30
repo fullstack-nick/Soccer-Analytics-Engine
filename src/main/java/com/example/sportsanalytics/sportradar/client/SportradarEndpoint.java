@@ -1,0 +1,35 @@
+package com.example.sportsanalytics.sportradar.client;
+
+import java.util.List;
+
+public enum SportradarEndpoint {
+    SPORT_EVENT_SUMMARY("summary"),
+    SPORT_EVENT_TIMELINE("timeline"),
+    SPORT_EVENT_EXTENDED_TIMELINE("extended_timeline"),
+    SPORT_EVENT_LINEUPS("lineups"),
+    SPORT_EVENT_MOMENTUM("momentum"),
+    SPORT_EVENT_EXTENDED_SUMMARY("extended_summary"),
+    SEASON_INFO("season_info");
+
+    private final String sourceEndpoint;
+
+    SportradarEndpoint(String sourceEndpoint) {
+        this.sourceEndpoint = sourceEndpoint;
+    }
+
+    public String sourceEndpoint() {
+        return sourceEndpoint;
+    }
+
+    public List<String> pathSegments(String providerId) {
+        return switch (this) {
+            case SPORT_EVENT_SUMMARY -> List.of("sport_events", providerId, "summary");
+            case SPORT_EVENT_TIMELINE -> List.of("sport_events", providerId, "timeline");
+            case SPORT_EVENT_EXTENDED_TIMELINE -> List.of("sport_events", providerId, "extended_timeline");
+            case SPORT_EVENT_LINEUPS -> List.of("sport_events", providerId, "lineups");
+            case SPORT_EVENT_MOMENTUM -> List.of("sport_events", providerId, "momentum");
+            case SPORT_EVENT_EXTENDED_SUMMARY -> List.of("sport_events", providerId, "extended_summary");
+            case SEASON_INFO -> List.of("seasons", providerId, "info");
+        };
+    }
+}
