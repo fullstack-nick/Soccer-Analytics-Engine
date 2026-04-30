@@ -26,6 +26,10 @@ class OpenApiSmokeTest {
                 .andExpect(jsonPath("$.paths['/api/system/status']").exists())
                 .andExpect(jsonPath("$.paths['/api/matches/track']").exists())
                 .andExpect(jsonPath("$.paths['/api/matches/{matchId}/state']").exists())
-                .andExpect(jsonPath("$.paths['/api/matches/{matchId}/events']").exists());
+                .andExpect(jsonPath("$.paths['/api/matches/{matchId}/state/rebuild']").exists())
+                .andExpect(jsonPath("$.paths['/api/matches/{matchId}/states']").exists())
+                .andExpect(jsonPath("$.paths['/api/matches/{matchId}/events']").exists())
+                .andExpect(jsonPath("$.paths['/api/matches/{matchId}/features']").exists())
+                .andExpect(jsonPath("$.paths['/api/matches/{matchId}/features/latest']").exists());
     }
 }

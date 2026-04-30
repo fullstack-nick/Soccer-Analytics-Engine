@@ -1,8 +1,11 @@
 package com.example.sportsanalytics.persistence.entity;
 
+import com.example.sportsanalytics.domain.model.CoverageMode;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,7 +15,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +25,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "feature_snapshots")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class FeatureSnapshotEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -43,6 +45,17 @@ public class FeatureSnapshotEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "features_json", nullable = false, columnDefinition = "jsonb")
     private JsonNode featuresJson;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "coverage_mode", nullable = false, length = 20)
+    private CoverageMode coverageMode;
+
+    @Column(name = "feature_set_version", nullable = false, length = 40)
+    private String featureSetVersion;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "availability_json", nullable = false, columnDefinition = "jsonb")
+    private JsonNode availabilityJson;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

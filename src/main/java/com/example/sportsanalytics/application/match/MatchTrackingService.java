@@ -1,7 +1,9 @@
 package com.example.sportsanalytics.application.match;
 
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
+import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
+import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TeamView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
@@ -47,7 +49,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     private final MatchMetadataMapper metadataMapper;
     private final CoverageDetector coverageDetector;
     private final SportradarEventNormalizer eventNormalizer;
-    private final MatchStateProjector stateProjector;
+    private final MatchStateRebuildService rebuildService;
     private final MatchRepository matchRepository;
     private final MatchEventRepository matchEventRepository;
     private final MatchStateRepository matchStateRepository;
@@ -61,14 +63,14 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             MatchMetadataMapper metadataMapper,
             CoverageDetector coverageDetector,
             SportradarEventNormalizer eventNormalizer,
-            MatchStateProjector stateProjector,
+            MatchStateRebuildService rebuildService,
             MatchRepository matchRepository,
             MatchEventRepository matchEventRepository,
             MatchStateRepository matchStateRepository,
             EntityManager entityManager,
             ObjectMapper objectMapper
     ) {
-        this(sportradarClient, metadataMapper, coverageDetector, eventNormalizer, stateProjector, matchRepository,
+        this(sportradarClient, metadataMapper, coverageDetector, eventNormalizer, rebuildService, matchRepository,
                 matchEventRepository, matchStateRepository, entityManager, objectMapper, Clock.systemUTC());
     }
 
@@ -77,7 +79,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             MatchMetadataMapper metadataMapper,
             CoverageDetector coverageDetector,
             SportradarEventNormalizer eventNormalizer,
-            MatchStateProjector stateProjector,
+            MatchStateRebuildService rebuildService,
             MatchRepository matchRepository,
             MatchEventRepository matchEventRepository,
             MatchStateRepository matchStateRepository,
@@ -89,7 +91,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         this.metadataMapper = metadataMapper;
         this.coverageDetector = coverageDetector;
         this.eventNormalizer = eventNormalizer;
-        this.stateProjector = stateProjector;
+        this.rebuildService = rebuildService;
         this.matchRepository = matchRepository;
         this.matchEventRepository = matchEventRepository;
         this.matchStateRepository = matchStateRepository;
@@ -110,6 +112,9 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         JsonNode momentum = fetch.payload(SportradarEndpoint.SPORT_EVENT_MOMENTUM);
         JsonNode extendedSummary = fetch.payload(SportradarEndpoint.SPORT_EVENT_EXTENDED_SUMMARY);
         JsonNode seasonInfo = fetch.payload(SportradarEndpoint.SEASON_INFO);
+        JsonNode standings = fetch.payload(SportradarEndpoint.SEASON_STANDINGS);
+        JsonNode formStandings = fetch.payload(SportradarEndpoint.SEASON_FORM_STANDINGS);
+        JsonNode seasonProbabilities = fetch.payload(SportradarEndpoint.SEASON_PROBABILITIES);
 
         CoverageDetectionResult coverage = coverageDetector.detect(
                 fetch.required(SportradarEndpoint.SPORT_EVENT_SUMMARY).payload(),
@@ -125,28 +130,37 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         List<NormalizedTimelineEvent> normalizedEvents = normalizeSelectedTimeline(metadata.providerMatchId(), fetch);
         EventWriteCounts counts = upsertEvents(match, normalizedEvents);
 
-        MatchStateProjection projection = stateProjector.project(
+        RebuildMatchStateResult rebuild = rebuildService.rebuild(
+                match,
                 metadata,
                 coverage,
-                normalizedEvents,
-                lineups,
-                momentum,
-                extendedSummary,
-                seasonInfo,
-                fetch.payloadIds()
+                rebuildService.payloadContextFromTracking(
+                        fetch.required(SportradarEndpoint.SPORT_EVENT_SUMMARY).payload(),
+                        lineups,
+                        momentum,
+                        extendedSummary,
+                        seasonInfo,
+                        standings,
+                        formStandings,
+                        seasonProbabilities,
+                        fetch.payloadIds()
+                )
         );
-        long stateVersion = persistState(match, projection);
+        MatchStateEntity latestState = matchStateRepository.findFirstByMatch_IdOrderByVersionDesc(match.getId())
+                .orElseThrow(() -> new MatchNotFoundException(match.getId()));
 
         return new TrackMatchResult(
                 match.getId(),
                 match.getProviderMatchId(),
                 match.getCoverageMode(),
-                stateVersion,
+                rebuild.latestStateVersion(),
+                rebuild.stateSnapshotsCreated(),
+                rebuild.featureSnapshotsCreated(),
                 team(metadata.homeTeam().id(), metadata.homeTeam().name()),
                 team(metadata.awayTeam().id(), metadata.awayTeam().name()),
-                projection.minute(),
-                projection.homeScore(),
-                projection.awayScore(),
+                latestState.getMinute(),
+                latestState.getHomeScore(),
+                latestState.getAwayScore(),
                 counts.inserted(),
                 counts.updated(),
                 fetch.fetchedEndpoints(),
@@ -166,6 +180,12 @@ public class MatchTrackingService implements MatchTrackingUseCase {
 
     @Override
     @Transactional(readOnly = true)
+    public List<MatchStateView> states(UUID matchId) {
+        return rebuildService.states(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MatchEventView> events(UUID matchId, MatchEventType type) {
         if (!matchRepository.existsById(matchId)) {
             throw new MatchNotFoundException(matchId);
@@ -174,6 +194,24 @@ public class MatchTrackingService implements MatchTrackingUseCase {
                 ? matchEventRepository.findByMatchIdOrderByEventSequenceAsc(matchId)
                 : matchEventRepository.findByMatchIdAndEventTypeOrderByEventSequenceAsc(matchId, type);
         return events.stream().map(this::eventView).toList();
+    }
+
+    @Override
+    @Transactional
+    public RebuildMatchStateResult rebuildState(UUID matchId) {
+        return rebuildService.rebuild(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeatureSnapshotView> features(UUID matchId) {
+        return rebuildService.features(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FeatureSnapshotView latestFeature(UUID matchId) {
+        return rebuildService.latestFeature(matchId);
     }
 
     @Override
@@ -198,6 +236,9 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         MatchMetadata metadata = metadataMapper.fromSummary(result.required(SportradarEndpoint.SPORT_EVENT_SUMMARY).payload());
         if (!"UNKNOWN".equals(metadata.seasonId())) {
             fetchOptional(result, SportradarEndpoint.SEASON_INFO, metadata.seasonId(), forceRefresh);
+            fetchOptional(result, SportradarEndpoint.SEASON_STANDINGS, metadata.seasonId(), forceRefresh);
+            fetchOptional(result, SportradarEndpoint.SEASON_FORM_STANDINGS, metadata.seasonId(), forceRefresh);
+            fetchOptional(result, SportradarEndpoint.SEASON_PROBABILITIES, metadata.seasonId(), forceRefresh);
         }
         return result;
     }
@@ -288,27 +329,10 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         return entityManager.getReference(RawPayloadEntity.class, rawPayloadId);
     }
 
-    private long persistState(MatchEntity match, MatchStateProjection projection) {
-        long nextVersion = matchStateRepository.findFirstByMatch_IdOrderByVersionDesc(match.getId())
-                .map(MatchStateEntity::getVersion)
-                .orElse(0L) + 1L;
-
-        MatchStateEntity state = new MatchStateEntity();
-        state.setMatch(match);
-        state.setVersion(nextVersion);
-        state.setMinute(projection.minute());
-        state.setHomeScore(projection.homeScore());
-        state.setAwayScore(projection.awayScore());
-        state.setHomeRedCards(projection.homeRedCards());
-        state.setAwayRedCards(projection.awayRedCards());
-        state.setStateJson(projection.stateJson());
-        state.setUpdatedAt(clock.instant());
-        return matchStateRepository.save(state).getVersion();
-    }
-
     private MatchStateView stateView(MatchEntity match, MatchStateEntity state) {
         return new MatchStateView(
                 match.getId(),
+                state.getEvent() == null ? null : state.getEvent().getId(),
                 match.getProviderMatchId(),
                 match.getCoverageMode(),
                 state.getVersion(),

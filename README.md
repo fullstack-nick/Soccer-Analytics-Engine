@@ -4,9 +4,10 @@ Java In-Play Soccer Intelligence Engine is a Spring Boot backend for
 coverage-aware Sportradar ingestion, event-sourced match state, probability
 snapshots, replay, and backtesting.
 
-The current implementation includes the Stage 1 backend foundation plus Stage 2
-Sportradar ingestion: raw payload storage, cache-aware provider calls, coverage
-detection, normalized timeline events, and projected match state.
+The current implementation includes the Stage 1 backend foundation, Stage 2
+Sportradar ingestion, and Stage 3 event-sourced state plus feature extraction:
+raw payload storage, cache-aware provider calls, coverage detection, normalized
+timeline events, deterministic state rebuilds, and model-ready feature snapshots.
 
 ## Stack
 
@@ -55,10 +56,31 @@ Read stored data:
 
 ```text
 GET /api/matches/{matchId}/state
+GET /api/matches/{matchId}/states
 GET /api/matches/{matchId}/events
 GET /api/matches/{matchId}/events?type=GOAL
+GET /api/matches/{matchId}/features
+GET /api/matches/{matchId}/features/latest
+POST /api/matches/{matchId}/state/rebuild
 GET /api/matches/provider?sportEventId=sr:sport_event:70075140
 ```
+
+Tracking a match now rebuilds state and features from stored events after
+ingestion. The track response includes `stateSnapshotsCreated` and
+`featureSnapshotsCreated`.
+
+## Stage 3 Features
+
+The feature pipeline creates one `feature_snapshots` row per event, plus one
+summary-only snapshot when no timeline is available. Feature values only use
+events and momentum values available at or before the snapshot minute, so the
+pipeline is ready for replay/backtesting without future leakage.
+
+Feature snapshots include score difference, time remaining, home advantage,
+standings/form team strength, lineup adjustment, red-card adjustment, rolling
+xG delta, shot pressure, shot location quality, field tilt, possession pressure,
+momentum trend, provider probability when available, and available/missing
+feature metadata.
 
 ## Configuration
 
@@ -101,13 +123,15 @@ Included:
 - raw payload cache/storage with sanitized request paths
 - coverage detection: `RICH`, `STANDARD`, `BASIC`
 - normalized timeline event persistence
-- projected latest match state
-- match tracking/state/events REST API
+- optional standings, form standings, and season probabilities
+- event-sourced state rebuilds from stored events
+- persisted state timeline
+- persisted feature timeline
+- match tracking/state/events/features REST API
 
 Not included until later stages:
 
 - live polling
 - replay endpoints
 - probability calculation implementation
-- feature snapshots
 - backtesting

@@ -9,6 +9,8 @@ public record TrackMatchResult(
         String providerMatchId,
         CoverageMode coverageMode,
         long stateVersion,
+        int stateSnapshotsCreated,
+        int featureSnapshotsCreated,
         TeamView homeTeam,
         TeamView awayTeam,
         int minute,

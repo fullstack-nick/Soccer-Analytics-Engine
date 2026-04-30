@@ -1,8 +1,10 @@
 package com.example.sportsanalytics.api.match;
 
 import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
+import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
+import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
 import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
@@ -48,6 +50,18 @@ public class MatchTrackingController {
         return matchTrackingUseCase.latestState(matchId);
     }
 
+    @Operation(summary = "Rebuild persisted state and feature snapshots from stored events")
+    @PostMapping("/{matchId}/state/rebuild")
+    public RebuildMatchStateResult rebuildState(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.rebuildState(matchId);
+    }
+
+    @Operation(summary = "Return persisted state timeline for a stored match")
+    @GetMapping("/{matchId}/states")
+    public List<MatchStateView> states(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.states(matchId);
+    }
+
     @Operation(summary = "Return normalized events for a stored match")
     @GetMapping("/{matchId}/events")
     public List<MatchEventView> events(
@@ -55,5 +69,17 @@ public class MatchTrackingController {
             @RequestParam(required = false) MatchEventType type
     ) {
         return matchTrackingUseCase.events(matchId, type);
+    }
+
+    @Operation(summary = "Return feature snapshot timeline for a stored match")
+    @GetMapping("/{matchId}/features")
+    public List<FeatureSnapshotView> features(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.features(matchId);
+    }
+
+    @Operation(summary = "Return latest feature snapshot for a stored match")
+    @GetMapping("/{matchId}/features/latest")
+    public FeatureSnapshotView latestFeature(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.latestFeature(matchId);
     }
 }

@@ -9,7 +9,10 @@ public enum SportradarEndpoint {
     SPORT_EVENT_LINEUPS("lineups"),
     SPORT_EVENT_MOMENTUM("momentum"),
     SPORT_EVENT_EXTENDED_SUMMARY("extended_summary"),
-    SEASON_INFO("season_info");
+    SEASON_INFO("season_info"),
+    SEASON_STANDINGS("season_standings"),
+    SEASON_FORM_STANDINGS("season_form_standings"),
+    SEASON_PROBABILITIES("season_probabilities");
 
     private final String sourceEndpoint;
 
@@ -30,6 +33,9 @@ public enum SportradarEndpoint {
             case SPORT_EVENT_MOMENTUM -> List.of("sport_events", providerId, "momentum");
             case SPORT_EVENT_EXTENDED_SUMMARY -> List.of("sport_events", providerId, "extended_summary");
             case SEASON_INFO -> List.of("seasons", providerId, "info");
+            case SEASON_STANDINGS -> List.of("seasons", providerId, "standings");
+            case SEASON_FORM_STANDINGS -> List.of("seasons", providerId, "form_standings");
+            case SEASON_PROBABILITIES -> List.of("seasons", providerId, "probabilities");
         };
     }
 }

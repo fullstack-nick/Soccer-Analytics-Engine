@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record MatchStateView(
         UUID matchId,
+        UUID eventId,
         String providerMatchId,
         CoverageMode coverageMode,
         long stateVersion,

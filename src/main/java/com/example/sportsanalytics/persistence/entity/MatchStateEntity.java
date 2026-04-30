@@ -36,6 +36,10 @@ public class MatchStateEntity {
     @JoinColumn(name = "match_id", nullable = false)
     private MatchEntity match;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id")
+    private MatchEventEntity event;
+
     @Column(name = "version", nullable = false)
     private long version;
 

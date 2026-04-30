@@ -13,4 +13,9 @@ public interface RawPayloadRepository extends JpaRepository<RawPayloadEntity, UU
             String requestPath,
             Instant expiresAt
     );
+
+    Optional<RawPayloadEntity> findFirstByProviderIdAndSourceEndpointOrderByFetchedAtDesc(
+            String providerId,
+            String sourceEndpoint
+    );
 }
