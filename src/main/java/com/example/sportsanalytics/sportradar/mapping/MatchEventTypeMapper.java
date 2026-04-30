@@ -6,13 +6,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class MatchEventTypeMapper {
     public MatchEventType map(String providerType) {
+        return map(providerType, false);
+    }
+
+    public MatchEventType map(String providerType, boolean scoreChanged) {
         if (providerType == null || providerType.isBlank()) {
             return MatchEventType.UNKNOWN;
         }
         String type = providerType.toLowerCase();
-        if ((type.contains("goal") && !type.contains("goal_kick") && !type.contains("goal_prevented"))
-                || type.equals("score_change")) {
+        if (scoreChanged && isConfirmedGoalType(type)) {
             return MatchEventType.GOAL;
+        }
+        if (type.equals("possible_goal")) {
+            return MatchEventType.SHOT;
         }
         if (type.contains("shot")) {
             return MatchEventType.SHOT;
@@ -42,5 +48,13 @@ public class MatchEventTypeMapper {
             return MatchEventType.VAR;
         }
         return MatchEventType.UNKNOWN;
+    }
+
+    private boolean isConfirmedGoalType(String type) {
+        return type.equals("score_change")
+                || type.equals("goal")
+                || type.equals("own_goal")
+                || type.equals("penalty_goal")
+                || type.equals("penalty_shootout_scored");
     }
 }

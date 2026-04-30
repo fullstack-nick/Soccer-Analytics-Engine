@@ -30,6 +30,8 @@ public class SportradarEventNormalizer {
         }
         List<NormalizedTimelineEvent> events = new ArrayList<>();
         long sequence = 1;
+        Integer previousHomeScore = null;
+        Integer previousAwayScore = null;
         for (JsonNode rawEvent : rawEvents) {
             String providerEventId = JsonNodes.text(rawEvent, "id");
             Integer minute = JsonNodes.integer(rawEvent, "match_time");
@@ -37,13 +39,15 @@ public class SportradarEventNormalizer {
             Integer awayScore = JsonNodes.integer(rawEvent, "away_score");
             String providerType = JsonNodes.text(rawEvent, "type");
             TeamSide side = teamSide(rawEvent);
+            boolean scoreChanged = scoreChanged(previousHomeScore, previousAwayScore, homeScore, awayScore);
             String normalizedProviderEventId = providerEventId == null
                     ? syntheticEventId(providerMatchId, sequence, providerType, minute, side, homeScore, awayScore)
                     : providerEventId;
             events.add(new NormalizedTimelineEvent(
                     normalizedProviderEventId,
+                    providerType,
                     sequence,
-                    eventTypeMapper.map(providerType),
+                    eventTypeMapper.map(providerType, scoreChanged),
                     minute == null ? 0 : minute,
                     JsonNodes.integer(rawEvent, "stoppage_time"),
                     side,
@@ -63,9 +67,16 @@ public class SportradarEventNormalizer {
                     ),
                     homeScore,
                     awayScore,
+                    scoreChanged,
                     sourceType,
                     rawPayloadId
             ));
+            if (homeScore != null) {
+                previousHomeScore = homeScore;
+            }
+            if (awayScore != null) {
+                previousAwayScore = awayScore;
+            }
             sequence++;
         }
         return events.stream()
@@ -85,6 +96,22 @@ public class SportradarEventNormalizer {
         String source = providerMatchId + "|" + sequence + "|" + providerType + "|" + minute + "|" + side + "|"
                 + homeScore + "|" + awayScore;
         return "synthetic:" + UUID.nameUUIDFromBytes(source.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private boolean scoreChanged(
+            Integer previousHomeScore,
+            Integer previousAwayScore,
+            Integer homeScore,
+            Integer awayScore
+    ) {
+        if (homeScore == null && awayScore == null) {
+            return false;
+        }
+        int previousHome = previousHomeScore == null ? 0 : previousHomeScore;
+        int previousAway = previousAwayScore == null ? 0 : previousAwayScore;
+        int currentHome = homeScore == null ? previousHome : homeScore;
+        int currentAway = awayScore == null ? previousAway : awayScore;
+        return currentHome != previousHome || currentAway != previousAway;
     }
 
     private TeamSide teamSide(JsonNode rawEvent) {

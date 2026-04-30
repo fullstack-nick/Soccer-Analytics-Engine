@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record NormalizedTimelineEvent(
         String providerEventId,
+        String providerEventType,
         long sequence,
         MatchEventType eventType,
         int minute,
@@ -20,8 +21,9 @@ public record NormalizedTimelineEvent(
         Integer destinationY,
         Double xgValue,
         String outcome,
-        Integer homeScore,
-        Integer awayScore,
+        Integer homeScoreAfter,
+        Integer awayScoreAfter,
+        boolean scoreChanged,
         TimelineSourceType sourceTimelineType,
         UUID rawPayloadId
 ) {

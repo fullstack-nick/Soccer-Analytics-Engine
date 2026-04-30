@@ -11,6 +11,7 @@ public record MatchEventView(
         UUID id,
         UUID matchId,
         String providerEventId,
+        String providerEventType,
         long eventSequence,
         MatchEventType eventType,
         int minute,
@@ -23,6 +24,9 @@ public record MatchEventView(
         Integer destinationY,
         Double xgValue,
         String outcome,
+        Integer homeScoreAfter,
+        Integer awayScoreAfter,
+        boolean scoreChanged,
         TimelineSourceType sourceTimelineType,
         Instant receivedAt
 ) {

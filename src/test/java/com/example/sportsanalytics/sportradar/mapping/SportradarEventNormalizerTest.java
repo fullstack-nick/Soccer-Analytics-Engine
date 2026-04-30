@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.example.sportsanalytics.domain.model.MatchEventType;
 import com.example.sportsanalytics.domain.model.TeamSide;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
@@ -30,9 +31,61 @@ class SportradarEventNormalizerTest {
         assertThat(events.get(1).destinationX()).isEqualTo(61);
         assertThat(events.get(1).playerIds()).containsExactly("sr:player:1");
         assertThat(events.get(2).eventType()).isEqualTo(MatchEventType.GOAL);
+        assertThat(events.get(2).providerEventType()).isEqualTo("score_change");
+        assertThat(events.get(2).scoreChanged()).isTrue();
+        assertThat(events.get(2).homeScoreAfter()).isEqualTo(1);
+        assertThat(events.get(2).awayScoreAfter()).isEqualTo(0);
         assertThat(events.get(2).xgValue()).isEqualTo(0.33);
         assertThat(events.get(3).eventType()).isEqualTo(MatchEventType.CARD);
         assertThat(events.get(3).outcome()).contains("red");
+    }
+
+    @Test
+    void possibleGoalIsPressureEventUnlessScoreChanges() throws Exception {
+        JsonNode timeline = objectMapper.readTree("""
+                {
+                  "timeline": {
+                    "event": [
+                      {
+                        "id": "start",
+                        "type": "match_started",
+                        "match_time": 0,
+                        "home_score": 0,
+                        "away_score": 0
+                      },
+                      {
+                        "id": "possible",
+                        "type": "possible_goal",
+                        "match_time": 20,
+                        "competitor": "home",
+                        "home_score": 0,
+                        "away_score": 0
+                      },
+                      {
+                        "id": "confirmed",
+                        "type": "score_change",
+                        "match_time": 21,
+                        "competitor": "home",
+                        "home_score": 1,
+                        "away_score": 0
+                      }
+                    ]
+                  }
+                }
+                """);
+
+        List<NormalizedTimelineEvent> events = normalizer.normalize(
+                "sr:sport_event:test",
+                timeline,
+                TimelineSourceType.EXTENDED,
+                UUID.randomUUID()
+        );
+
+        assertThat(events.get(1).providerEventType()).isEqualTo("possible_goal");
+        assertThat(events.get(1).eventType()).isEqualTo(MatchEventType.SHOT);
+        assertThat(events.get(1).scoreChanged()).isFalse();
+        assertThat(events.get(2).eventType()).isEqualTo(MatchEventType.GOAL);
+        assertThat(events.get(2).scoreChanged()).isTrue();
     }
 
     @Test

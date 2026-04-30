@@ -139,6 +139,7 @@ class MatchTrackingControllerTest {
                             UUID.fromString("22222222-2222-2222-2222-222222222222"),
                             MATCH_ID,
                             "12",
+                            "score_change",
                             3,
                             MatchEventType.GOAL,
                             30,
@@ -151,6 +152,9 @@ class MatchTrackingControllerTest {
                             null,
                             0.33,
                             "score_change",
+                            1,
+                            0,
+                            true,
                             TimelineSourceType.EXTENDED,
                             Instant.parse("2026-04-30T00:00:00Z")
                     ));

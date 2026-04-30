@@ -257,6 +257,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             } else {
                 updated++;
             }
+            entity.setProviderEventType(normalized.providerEventType());
             entity.setEventSequence(normalized.sequence());
             entity.setEventType(normalized.eventType());
             entity.setOccurredAtMinute(normalized.minute());
@@ -270,6 +271,9 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             entity.setDestinationY(normalized.destinationY());
             entity.setXgValue(normalized.xgValue());
             entity.setOutcome(normalized.outcome());
+            entity.setHomeScoreAfter(normalized.homeScoreAfter());
+            entity.setAwayScoreAfter(normalized.awayScoreAfter());
+            entity.setScoreChanged(normalized.scoreChanged());
             entity.setSourceTimelineType(normalized.sourceTimelineType());
             entity.setReceivedAt(now);
             matchEventRepository.save(entity);
@@ -326,6 +330,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
                 event.getId(),
                 event.getMatch().getId(),
                 event.getProviderEventId(),
+                event.getProviderEventType(),
                 event.getEventSequence(),
                 event.getEventType(),
                 event.getOccurredAtMinute(),
@@ -338,6 +343,9 @@ public class MatchTrackingService implements MatchTrackingUseCase {
                 event.getDestinationY(),
                 event.getXgValue(),
                 event.getOutcome(),
+                event.getHomeScoreAfter(),
+                event.getAwayScoreAfter(),
+                event.isScoreChanged(),
                 event.getSourceTimelineType(),
                 event.getReceivedAt()
         );

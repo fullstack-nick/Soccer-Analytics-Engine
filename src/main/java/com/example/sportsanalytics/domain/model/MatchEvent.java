@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record MatchEvent(
         String providerEventId,
+        String providerEventType,
         String matchId,
         MatchEventType type,
         int minute,
@@ -19,6 +20,9 @@ public record MatchEvent(
         Integer destinationY,
         Double xgValue,
         String outcome,
+        Integer homeScoreAfter,
+        Integer awayScoreAfter,
+        boolean scoreChanged,
         UUID rawPayloadId,
         Instant occurredAt,
         Instant receivedAt

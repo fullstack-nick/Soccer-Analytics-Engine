@@ -37,11 +37,11 @@ public class MatchStateProjector {
         int homeScore = metadata.homeScore();
         int awayScore = metadata.awayScore();
         for (NormalizedTimelineEvent event : events) {
-            if (event.homeScore() != null) {
-                homeScore = event.homeScore();
+            if (event.homeScoreAfter() != null) {
+                homeScore = event.homeScoreAfter();
             }
-            if (event.awayScore() != null) {
-                awayScore = event.awayScore();
+            if (event.awayScoreAfter() != null) {
+                awayScore = event.awayScoreAfter();
             }
         }
         int homeRedCards = redCards(events, TeamSide.HOME);

@@ -44,6 +44,9 @@ public class MatchEventEntity {
     @Column(name = "provider_event_id", length = 80)
     private String providerEventId;
 
+    @Column(name = "provider_event_type", length = 80)
+    private String providerEventType;
+
     @Column(name = "event_sequence", nullable = false)
     private long eventSequence;
 
@@ -86,6 +89,15 @@ public class MatchEventEntity {
 
     @Column(name = "outcome", length = 80)
     private String outcome;
+
+    @Column(name = "home_score_after")
+    private Integer homeScoreAfter;
+
+    @Column(name = "away_score_after")
+    private Integer awayScoreAfter;
+
+    @Column(name = "score_changed", nullable = false)
+    private boolean scoreChanged;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source_timeline_type", nullable = false, length = 40)
