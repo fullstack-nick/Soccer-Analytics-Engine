@@ -89,6 +89,59 @@ class SportradarEventNormalizerTest {
     }
 
     @Test
+    void detectsAdministrativeOnlyTimelineAsNotUsableForMatchReplay() throws Exception {
+        JsonNode timeline = objectMapper.readTree("""
+                {
+                  "timeline": {
+                    "event": [
+                      { "id": "league", "type": "league" },
+                      { "id": "referee", "type": "main_referee" },
+                      { "id": "period", "type": "regular_period" }
+                    ]
+                  }
+                }
+                """);
+
+        List<NormalizedTimelineEvent> events = normalizer.normalize(
+                "sr:sport_event:test",
+                timeline,
+                TimelineSourceType.EXTENDED,
+                UUID.randomUUID()
+        );
+
+        assertThat(normalizer.hasUsableMatchEvents(events)).isFalse();
+    }
+
+    @Test
+    void detectsTimedTimelineEventsAsUsableForMatchReplay() throws Exception {
+        JsonNode timeline = objectMapper.readTree("""
+                {
+                  "timeline": {
+                    "event": [
+                      {
+                        "id": "shot",
+                        "type": "shot_on_target",
+                        "match_time": 12,
+                        "competitor": "away",
+                        "home_score": 0,
+                        "away_score": 0
+                      }
+                    ]
+                  }
+                }
+                """);
+
+        List<NormalizedTimelineEvent> events = normalizer.normalize(
+                "sr:sport_event:test",
+                timeline,
+                TimelineSourceType.STANDARD,
+                UUID.randomUUID()
+        );
+
+        assertThat(normalizer.hasUsableMatchEvents(events)).isTrue();
+    }
+
+    @Test
     void syntheticEventIdsAreDeterministic() {
         String first = normalizer.syntheticEventId("match-1", 1, "goal", 10, TeamSide.HOME, 1, 0);
         String second = normalizer.syntheticEventId("match-1", 1, "goal", 10, TeamSide.HOME, 1, 0);

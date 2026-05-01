@@ -302,7 +302,11 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         TrackingFetchResult result = new TrackingFetchResult();
         result.add(sportradarClient.fetch(SportradarEndpoint.SPORT_EVENT_SUMMARY, sportEventId, forceRefresh));
         fetchOptional(result, SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE, sportEventId, forceRefresh);
-        if (result.payload(SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE).isMissingNode()) {
+        if (result.payload(SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE).isMissingNode()
+                || !eventNormalizer.hasUsableMatchEvents(normalizeTimeline(
+                        sportEventId,
+                        result.payloadByEndpoint(SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE).orElse(null)
+                ))) {
             fetchOptional(result, SportradarEndpoint.SPORT_EVENT_TIMELINE, sportEventId, forceRefresh);
         }
         fetchOptional(result, SportradarEndpoint.SPORT_EVENT_LINEUPS, sportEventId, forceRefresh);
@@ -345,16 +349,27 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     }
 
     private List<NormalizedTimelineEvent> normalizeSelectedTimeline(String providerMatchId, TrackingFetchResult fetch) {
-        SportradarPayload selected = fetch.payloadByEndpoint(SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE)
-                .or(() -> fetch.payloadByEndpoint(SportradarEndpoint.SPORT_EVENT_TIMELINE))
-                .orElse(null);
-        if (selected == null) {
+        List<NormalizedTimelineEvent> extended = normalizeTimeline(
+                providerMatchId,
+                fetch.payloadByEndpoint(SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE).orElse(null)
+        );
+        if (eventNormalizer.hasUsableMatchEvents(extended)) {
+            return extended;
+        }
+        return normalizeTimeline(
+                providerMatchId,
+                fetch.payloadByEndpoint(SportradarEndpoint.SPORT_EVENT_TIMELINE).orElse(null)
+        );
+    }
+
+    private List<NormalizedTimelineEvent> normalizeTimeline(String providerMatchId, SportradarPayload payload) {
+        if (payload == null) {
             return List.of();
         }
-        TimelineSourceType sourceType = selected.endpoint() == SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE
+        TimelineSourceType sourceType = payload.endpoint() == SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE
                 ? TimelineSourceType.EXTENDED
                 : TimelineSourceType.STANDARD;
-        return eventNormalizer.normalize(providerMatchId, selected.payload(), sourceType, selected.rawPayloadId());
+        return eventNormalizer.normalize(providerMatchId, payload.payload(), sourceType, payload.rawPayloadId());
     }
 
     private EventWriteCounts upsertEvents(MatchEntity match, List<NormalizedTimelineEvent> events) {

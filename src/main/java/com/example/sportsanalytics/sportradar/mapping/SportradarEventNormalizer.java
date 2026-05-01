@@ -2,6 +2,7 @@ package com.example.sportsanalytics.sportradar.mapping;
 
 import com.example.sportsanalytics.domain.model.TeamSide;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
+import com.example.sportsanalytics.domain.model.MatchEventType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -96,6 +97,23 @@ public class SportradarEventNormalizer {
         String source = providerMatchId + "|" + sequence + "|" + providerType + "|" + minute + "|" + side + "|"
                 + homeScore + "|" + awayScore;
         return "synthetic:" + UUID.nameUUIDFromBytes(source.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public boolean hasUsableMatchEvents(List<NormalizedTimelineEvent> events) {
+        if (events == null || events.isEmpty()) {
+            return false;
+        }
+        return events.stream().anyMatch(event ->
+                event.minute() > 0
+                        || event.scoreChanged()
+                        || event.eventType() == MatchEventType.GOAL
+                        || event.eventType() == MatchEventType.SHOT
+                        || event.eventType() == MatchEventType.PASS
+                        || event.eventType() == MatchEventType.FOUL
+                        || event.eventType() == MatchEventType.CARD
+                        || event.eventType() == MatchEventType.SUBSTITUTION
+                        || event.eventType() == MatchEventType.VAR
+        );
     }
 
     private boolean scoreChanged(

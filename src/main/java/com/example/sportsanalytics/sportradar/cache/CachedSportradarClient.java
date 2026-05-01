@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -43,7 +44,7 @@ public class CachedSportradarClient implements SportradarClient {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SportradarPayload fetch(SportradarEndpoint endpoint, String providerId, boolean forceRefresh) {
         String requestPath = uriFactory.requestPath(endpoint, providerId);
         if (!forceRefresh) {
