@@ -19,8 +19,11 @@ class SportsAnalyticsPropertiesTest {
             assertThat(properties.getSportradar().getAccessLevel()).isEqualTo("trial");
             assertThat(properties.getSportradar().getPackageName()).isEqualTo("soccer-extended");
             assertThat(properties.getSportradar().getBaseUrl()).isEqualTo("https://api.sportradar.com");
-            assertThat(properties.getSportradar().getRequestDelayMs()).isEqualTo(1500);
+            assertThat(properties.getSportradar().getRequestDelayMs()).isEqualTo(1100);
             assertThat(properties.getSportradar().getMaxRetries()).isEqualTo(2);
+            assertThat(properties.getLive().isEnabled()).isFalse();
+            assertThat(properties.getLive().getPollDelayMs()).isEqualTo(10_000);
+            assertThat(properties.getLive().getMaxMatchesPerTick()).isEqualTo(3);
         });
     }
 

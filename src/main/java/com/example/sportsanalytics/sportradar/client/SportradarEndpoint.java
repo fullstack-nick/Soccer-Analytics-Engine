@@ -13,7 +13,10 @@ public enum SportradarEndpoint {
     SEASON_STANDINGS("season_standings"),
     SEASON_FORM_STANDINGS("season_form_standings"),
     SEASON_PROBABILITIES("season_probabilities"),
-    SEASON_SCHEDULES("season_schedules");
+    SEASON_SCHEDULES("season_schedules"),
+    LIVE_SCHEDULES("live_schedules"),
+    LIVE_TIMELINES("live_timelines"),
+    LIVE_TIMELINES_DELTA("live_timelines_delta");
 
     private final String sourceEndpoint;
 
@@ -38,6 +41,9 @@ public enum SportradarEndpoint {
             case SEASON_FORM_STANDINGS -> List.of("seasons", providerId, "form_standings");
             case SEASON_PROBABILITIES -> List.of("seasons", providerId, "probabilities");
             case SEASON_SCHEDULES -> List.of("seasons", providerId, "schedules");
+            case LIVE_SCHEDULES -> List.of("schedules", "live", "schedules");
+            case LIVE_TIMELINES -> List.of("schedules", "live", "timelines");
+            case LIVE_TIMELINES_DELTA -> List.of("schedules", "live", "timelines_delta");
         };
     }
 }

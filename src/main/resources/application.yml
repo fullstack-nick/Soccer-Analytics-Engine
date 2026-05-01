@@ -55,3 +55,14 @@ sports:
     base-url: ${SPORTRADAR_BASE_URL:https://api.sportradar.com}
     request-delay-ms: ${SPORTRADAR_REQUEST_DELAY_MS:1100}
     max-retries: ${SPORTRADAR_MAX_RETRIES:2}
+  live:
+    enabled: ${SPORTS_LIVE_ENABLED:false}
+    poll-delay-ms: ${SPORTS_LIVE_POLL_DELAY_MS:10000}
+    full-timeline-refresh-ms: ${SPORTS_LIVE_FULL_TIMELINE_REFRESH_MS:60000}
+    max-matches-per-tick: ${SPORTS_LIVE_MAX_MATCHES_PER_TICK:3}
+    divergence-alert-threshold: ${SPORTS_LIVE_DIVERGENCE_ALERT_THRESHOLD:0.12}
+    red-card-swing-threshold: ${SPORTS_LIVE_RED_CARD_SWING_THRESHOLD:0.10}
+    pressure-alert-threshold: ${SPORTS_LIVE_PRESSURE_ALERT_THRESHOLD:2.5}
+    xg-contradiction-threshold: ${SPORTS_LIVE_XG_CONTRADICTION_THRESHOLD:0.7}
+    late-momentum-minute: ${SPORTS_LIVE_LATE_MOMENTUM_MINUTE:70}
+    late-momentum-threshold: ${SPORTS_LIVE_LATE_MOMENTUM_THRESHOLD:15.0}

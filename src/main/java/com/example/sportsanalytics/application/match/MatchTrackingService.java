@@ -1,5 +1,6 @@
 package com.example.sportsanalytics.application.match;
 
+import com.example.sportsanalytics.application.alert.AlertGenerationService;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
@@ -7,6 +8,7 @@ import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView
 import com.example.sportsanalytics.application.match.dto.ProbabilityTimelinePoint;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
 import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
+import com.example.sportsanalytics.application.match.dto.EventWriteCounts;
 import com.example.sportsanalytics.application.match.dto.FinalScoreView;
 import com.example.sportsanalytics.application.match.dto.ReplayMatchResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
@@ -19,7 +21,6 @@ import com.example.sportsanalytics.analytics.comparison.ModelComparisonResult;
 import com.example.sportsanalytics.persistence.entity.MatchEntity;
 import com.example.sportsanalytics.persistence.entity.MatchEventEntity;
 import com.example.sportsanalytics.persistence.entity.MatchStateEntity;
-import com.example.sportsanalytics.persistence.entity.RawPayloadEntity;
 import com.example.sportsanalytics.persistence.repository.MatchEventRepository;
 import com.example.sportsanalytics.persistence.repository.MatchRepository;
 import com.example.sportsanalytics.persistence.repository.MatchStateRepository;
@@ -36,9 +37,7 @@ import com.example.sportsanalytics.sportradar.mapping.SportradarEventNormalizer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
-import jakarta.persistence.EntityManager;
 import java.time.Clock;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,14 +54,14 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     private final MatchMetadataMapper metadataMapper;
     private final CoverageDetector coverageDetector;
     private final SportradarEventNormalizer eventNormalizer;
+    private final MatchEventIngestionService eventIngestionService;
     private final MatchStateRebuildService rebuildService;
     private final ProbabilityRebuildService probabilityRebuildService;
+    private final AlertGenerationService alertGenerationService;
     private final MatchRepository matchRepository;
     private final MatchEventRepository matchEventRepository;
     private final MatchStateRepository matchStateRepository;
-    private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
-    private final Clock clock;
 
     @Autowired
     public MatchTrackingService(
@@ -70,17 +69,18 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             MatchMetadataMapper metadataMapper,
             CoverageDetector coverageDetector,
             SportradarEventNormalizer eventNormalizer,
+            MatchEventIngestionService eventIngestionService,
             MatchStateRebuildService rebuildService,
             ProbabilityRebuildService probabilityRebuildService,
+            AlertGenerationService alertGenerationService,
             MatchRepository matchRepository,
             MatchEventRepository matchEventRepository,
             MatchStateRepository matchStateRepository,
-            EntityManager entityManager,
             ObjectMapper objectMapper
     ) {
-        this(sportradarClient, metadataMapper, coverageDetector, eventNormalizer, rebuildService,
-                probabilityRebuildService, matchRepository, matchEventRepository, matchStateRepository,
-                entityManager, objectMapper, Clock.systemUTC());
+        this(sportradarClient, metadataMapper, coverageDetector, eventNormalizer, eventIngestionService, rebuildService,
+                probabilityRebuildService, alertGenerationService, matchRepository, matchEventRepository, matchStateRepository,
+                objectMapper, Clock.systemUTC());
     }
 
     MatchTrackingService(
@@ -88,12 +88,13 @@ public class MatchTrackingService implements MatchTrackingUseCase {
             MatchMetadataMapper metadataMapper,
             CoverageDetector coverageDetector,
             SportradarEventNormalizer eventNormalizer,
+            MatchEventIngestionService eventIngestionService,
             MatchStateRebuildService rebuildService,
             ProbabilityRebuildService probabilityRebuildService,
+            AlertGenerationService alertGenerationService,
             MatchRepository matchRepository,
             MatchEventRepository matchEventRepository,
             MatchStateRepository matchStateRepository,
-            EntityManager entityManager,
             ObjectMapper objectMapper,
             Clock clock
     ) {
@@ -101,14 +102,14 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         this.metadataMapper = metadataMapper;
         this.coverageDetector = coverageDetector;
         this.eventNormalizer = eventNormalizer;
+        this.eventIngestionService = eventIngestionService;
         this.rebuildService = rebuildService;
         this.probabilityRebuildService = probabilityRebuildService;
+        this.alertGenerationService = alertGenerationService;
         this.matchRepository = matchRepository;
         this.matchEventRepository = matchEventRepository;
         this.matchStateRepository = matchStateRepository;
-        this.entityManager = entityManager;
         this.objectMapper = objectMapper;
-        this.clock = clock;
     }
 
     @Override
@@ -139,7 +140,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
 
         MatchEntity match = upsertMatch(metadata, coverage);
         List<NormalizedTimelineEvent> normalizedEvents = normalizeSelectedTimeline(metadata.providerMatchId(), fetch);
-        EventWriteCounts counts = upsertEvents(match, normalizedEvents);
+        EventWriteCounts counts = eventIngestionService.upsertEvents(match, normalizedEvents);
 
         RebuildMatchStateResult rebuild = rebuildService.rebuild(
                 match,
@@ -157,6 +158,7 @@ public class MatchTrackingService implements MatchTrackingUseCase {
                         fetch.payloadIds()
                 )
         );
+        alertGenerationService.generate(match.getId());
         MatchStateEntity latestState = matchStateRepository.findFirstByMatch_IdOrderByVersionDesc(match.getId())
                 .orElseThrow(() -> new MatchNotFoundException(match.getId()));
 
@@ -211,13 +213,17 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     @Override
     @Transactional
     public RebuildMatchStateResult rebuildState(UUID matchId) {
-        return rebuildService.rebuild(matchId);
+        RebuildMatchStateResult result = rebuildService.rebuild(matchId);
+        alertGenerationService.generate(matchId);
+        return result;
     }
 
     @Override
     @Transactional
     public RebuildProbabilityResult rebuildProbabilities(UUID matchId) {
-        return probabilityRebuildService.rebuild(matchId);
+        RebuildProbabilityResult result = probabilityRebuildService.rebuild(matchId);
+        alertGenerationService.generate(matchId);
+        return result;
     }
 
     @Override
@@ -372,54 +378,6 @@ public class MatchTrackingService implements MatchTrackingUseCase {
         return eventNormalizer.normalize(providerMatchId, payload.payload(), sourceType, payload.rawPayloadId());
     }
 
-    private EventWriteCounts upsertEvents(MatchEntity match, List<NormalizedTimelineEvent> events) {
-        int inserted = 0;
-        int updated = 0;
-        Instant now = clock.instant();
-        for (NormalizedTimelineEvent normalized : events) {
-            Optional<MatchEventEntity> existing = matchEventRepository.findByMatchIdAndProviderEventId(
-                    match.getId(),
-                    normalized.providerEventId()
-            );
-            MatchEventEntity entity = existing.orElseGet(MatchEventEntity::new);
-            if (existing.isEmpty()) {
-                inserted++;
-                entity.setMatch(match);
-                entity.setProviderEventId(normalized.providerEventId());
-            } else {
-                updated++;
-            }
-            entity.setProviderEventType(normalized.providerEventType());
-            entity.setEventSequence(normalized.sequence());
-            entity.setEventType(normalized.eventType());
-            entity.setOccurredAtMinute(normalized.minute());
-            entity.setStoppageTime(normalized.stoppageTime());
-            entity.setTeamSide(normalized.teamSide());
-            entity.setPayload(rawPayloadReference(normalized.rawPayloadId()));
-            entity.setPlayerIds(objectMapper.valueToTree(normalized.playerIds()));
-            entity.setX(normalized.x());
-            entity.setY(normalized.y());
-            entity.setDestinationX(normalized.destinationX());
-            entity.setDestinationY(normalized.destinationY());
-            entity.setXgValue(normalized.xgValue());
-            entity.setOutcome(normalized.outcome());
-            entity.setHomeScoreAfter(normalized.homeScoreAfter());
-            entity.setAwayScoreAfter(normalized.awayScoreAfter());
-            entity.setScoreChanged(normalized.scoreChanged());
-            entity.setSourceTimelineType(normalized.sourceTimelineType());
-            entity.setReceivedAt(now);
-            matchEventRepository.save(entity);
-        }
-        return new EventWriteCounts(inserted, updated);
-    }
-
-    private RawPayloadEntity rawPayloadReference(UUID rawPayloadId) {
-        if (rawPayloadId == null) {
-            return null;
-        }
-        return entityManager.getReference(RawPayloadEntity.class, rawPayloadId);
-    }
-
     private MatchStateView stateView(MatchEntity match, MatchStateEntity state) {
         return new MatchStateView(
                 match.getId(),
@@ -490,9 +448,6 @@ public class MatchTrackingService implements MatchTrackingUseCase {
 
     private TeamView team(String id, String name) {
         return new TeamView(id, name);
-    }
-
-    private record EventWriteCounts(int inserted, int updated) {
     }
 
     private static final class TrackingFetchResult {

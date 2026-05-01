@@ -41,8 +41,40 @@ public class SportradarEventNormalizer {
             String providerType = JsonNodes.text(rawEvent, "type");
             TeamSide side = teamSide(rawEvent);
             boolean scoreChanged = scoreChanged(previousHomeScore, previousAwayScore, homeScore, awayScore);
+            List<String> playerIds = playerIds(rawEvent);
+            Integer stoppageTime = JsonNodes.integer(rawEvent, "stoppage_time");
+            Integer x = JsonNodes.integer(rawEvent, "x");
+            Integer y = JsonNodes.integer(rawEvent, "y");
+            Integer destinationX = JsonNodes.integer(rawEvent, "destination_x");
+            Integer destinationY = JsonNodes.integer(rawEvent, "destination_y");
+            Double xgValue = JsonNodes.decimal(rawEvent, "xg_value");
+            String outcome = firstNonBlank(
+                    JsonNodes.text(rawEvent, "outcome"),
+                    JsonNodes.text(rawEvent, "card_description"),
+                    JsonNodes.text(rawEvent, "reason"),
+                    JsonNodes.text(rawEvent, "decision"),
+                    JsonNodes.text(rawEvent, "method"),
+                    providerType
+            );
             String normalizedProviderEventId = providerEventId == null
-                    ? syntheticEventId(providerMatchId, sequence, providerType, minute, side, homeScore, awayScore)
+                    ? syntheticEventId(
+                            providerMatchId,
+                            sequence,
+                            providerType,
+                            minute,
+                            stoppageTime,
+                            side,
+                            homeScore,
+                            awayScore,
+                            playerIds,
+                            x,
+                            y,
+                            destinationX,
+                            destinationY,
+                            xgValue,
+                            outcome,
+                            sourceType
+                    )
                     : providerEventId;
             events.add(new NormalizedTimelineEvent(
                     normalizedProviderEventId,
@@ -50,22 +82,15 @@ public class SportradarEventNormalizer {
                     sequence,
                     eventTypeMapper.map(providerType, scoreChanged),
                     minute == null ? 0 : minute,
-                    JsonNodes.integer(rawEvent, "stoppage_time"),
+                    stoppageTime,
                     side,
-                    playerIds(rawEvent),
-                    JsonNodes.integer(rawEvent, "x"),
-                    JsonNodes.integer(rawEvent, "y"),
-                    JsonNodes.integer(rawEvent, "destination_x"),
-                    JsonNodes.integer(rawEvent, "destination_y"),
-                    JsonNodes.decimal(rawEvent, "xg_value"),
-                    firstNonBlank(
-                            JsonNodes.text(rawEvent, "outcome"),
-                            JsonNodes.text(rawEvent, "card_description"),
-                            JsonNodes.text(rawEvent, "reason"),
-                            JsonNodes.text(rawEvent, "decision"),
-                            JsonNodes.text(rawEvent, "method"),
-                            providerType
-                    ),
+                    playerIds,
+                    x,
+                    y,
+                    destinationX,
+                    destinationY,
+                    xgValue,
+                    outcome,
                     homeScore,
                     awayScore,
                     scoreChanged,
@@ -97,6 +122,33 @@ public class SportradarEventNormalizer {
         String source = providerMatchId + "|" + sequence + "|" + providerType + "|" + minute + "|" + side + "|"
                 + homeScore + "|" + awayScore;
         return "synthetic:" + UUID.nameUUIDFromBytes(source.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String syntheticEventId(
+            String providerMatchId,
+            long sequence,
+            String providerType,
+            Integer minute,
+            Integer stoppageTime,
+            TeamSide side,
+            Integer homeScore,
+            Integer awayScore,
+            List<String> playerIds,
+            Integer x,
+            Integer y,
+            Integer destinationX,
+            Integer destinationY,
+            Double xgValue,
+            String outcome,
+            TimelineSourceType sourceType
+    ) {
+        if (sourceType != TimelineSourceType.LIVE_TIMELINE && sourceType != TimelineSourceType.LIVE_DELTA) {
+            return syntheticEventId(providerMatchId, sequence, providerType, minute, side, homeScore, awayScore);
+        }
+        String source = providerMatchId + "|" + providerType + "|" + minute + "|" + stoppageTime + "|" + side + "|"
+                + homeScore + "|" + awayScore + "|" + String.join(",", playerIds) + "|" + x + "|" + y + "|"
+                + destinationX + "|" + destinationY + "|" + xgValue + "|" + outcome;
+        return "synthetic-live:" + UUID.nameUUIDFromBytes(source.getBytes(StandardCharsets.UTF_8));
     }
 
     public boolean hasUsableMatchEvents(List<NormalizedTimelineEvent> events) {

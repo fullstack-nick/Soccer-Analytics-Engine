@@ -1,5 +1,9 @@
 package com.example.sportsanalytics.api.match;
 
+import com.example.sportsanalytics.application.alert.AlertGenerationService;
+import com.example.sportsanalytics.application.alert.dto.MatchAlertView;
+import com.example.sportsanalytics.application.live.LiveTrackingService;
+import com.example.sportsanalytics.application.live.dto.LiveTrackingView;
 import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
@@ -19,6 +23,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,15 +37,41 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/matches")
 public class MatchTrackingController {
     private final MatchTrackingUseCase matchTrackingUseCase;
+    private final LiveTrackingService liveTrackingService;
+    private final AlertGenerationService alertGenerationService;
 
-    public MatchTrackingController(MatchTrackingUseCase matchTrackingUseCase) {
+    public MatchTrackingController(
+            MatchTrackingUseCase matchTrackingUseCase,
+            LiveTrackingService liveTrackingService,
+            AlertGenerationService alertGenerationService
+    ) {
         this.matchTrackingUseCase = matchTrackingUseCase;
+        this.liveTrackingService = liveTrackingService;
+        this.alertGenerationService = alertGenerationService;
     }
 
     @Operation(summary = "Track one Sportradar sport event and persist normalized match state")
     @PostMapping("/track")
     public TrackMatchResult track(@Valid @RequestBody TrackMatchRequest request) {
         return matchTrackingUseCase.track(new TrackMatchCommand(request.sportEventId(), request.forceRefresh()));
+    }
+
+    @Operation(summary = "Start live tracking for an already stored match")
+    @PostMapping("/{matchId}/track")
+    public LiveTrackingView startLiveTracking(@PathVariable UUID matchId) {
+        return liveTrackingService.start(matchId);
+    }
+
+    @Operation(summary = "Stop live tracking for a match without deleting stored analytics")
+    @DeleteMapping("/{matchId}/track")
+    public LiveTrackingView stopLiveTracking(@PathVariable UUID matchId) {
+        return liveTrackingService.stop(matchId);
+    }
+
+    @Operation(summary = "List live-tracked matches with latest analytics summary")
+    @GetMapping("/live")
+    public List<LiveTrackingView> liveMatches() {
+        return liveTrackingService.trackedMatches();
     }
 
     @Operation(summary = "Resolve a stored match by Sportradar sport event id")
@@ -125,5 +156,11 @@ public class MatchTrackingController {
     @GetMapping("/{matchId}/model-comparison")
     public ModelComparisonResult modelComparison(@PathVariable UUID matchId) {
         return matchTrackingUseCase.modelComparison(matchId);
+    }
+
+    @Operation(summary = "Return analytical alerts for a stored match")
+    @GetMapping("/{matchId}/alerts")
+    public List<MatchAlertView> alerts(@PathVariable UUID matchId) {
+        return alertGenerationService.alerts(matchId);
     }
 }

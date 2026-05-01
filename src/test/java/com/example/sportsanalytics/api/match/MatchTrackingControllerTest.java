@@ -2,12 +2,19 @@ package com.example.sportsanalytics.api.match;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.sportsanalytics.api.error.ApiExceptionHandler;
+import com.example.sportsanalytics.application.alert.AlertGenerationService;
+import com.example.sportsanalytics.application.alert.dto.MatchAlertView;
+import com.example.sportsanalytics.application.live.LiveTrackingService;
+import com.example.sportsanalytics.application.live.dto.LiveTrackingView;
 import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
@@ -23,6 +30,9 @@ import com.example.sportsanalytics.application.match.dto.TeamView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
 import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
 import com.example.sportsanalytics.domain.model.CoverageMode;
+import com.example.sportsanalytics.domain.model.AlertSeverity;
+import com.example.sportsanalytics.domain.model.AlertType;
+import com.example.sportsanalytics.domain.model.LiveTrackingStatus;
 import com.example.sportsanalytics.domain.model.MatchEventType;
 import com.example.sportsanalytics.domain.model.TeamSide;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
@@ -49,6 +59,12 @@ class MatchTrackingControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private LiveTrackingService liveTrackingService;
+
+    @Autowired
+    private AlertGenerationService alertGenerationService;
 
     @Test
     void trackValidatesBlankSportEventId() throws Exception {
@@ -191,6 +207,86 @@ class MatchTrackingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.matchId").value(MATCH_ID.toString()))
                 .andExpect(jsonPath("$.providerMatchId").value("sr:sport_event:70075140"));
+    }
+
+    @Test
+    void startsLiveTracking() throws Exception {
+        when(liveTrackingService.start(MATCH_ID)).thenReturn(liveTrackingView(true, LiveTrackingStatus.TRACKING));
+
+        mockMvc.perform(post("/api/matches/{matchId}/track", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchId").value(MATCH_ID.toString()))
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.trackingStatus").value("TRACKING"));
+    }
+
+    @Test
+    void stopsLiveTracking() throws Exception {
+        when(liveTrackingService.stop(MATCH_ID)).thenReturn(liveTrackingView(false, LiveTrackingStatus.STOPPED));
+
+        mockMvc.perform(delete("/api/matches/{matchId}/track", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.trackingStatus").value("STOPPED"));
+    }
+
+    @Test
+    void listsLiveTrackedMatches() throws Exception {
+        when(liveTrackingService.trackedMatches()).thenReturn(List.of(liveTrackingView(true, LiveTrackingStatus.TRACKING)));
+
+        mockMvc.perform(get("/api/matches/live"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].matchId").value(MATCH_ID.toString()));
+    }
+
+    @Test
+    void returnsAlerts() throws Exception {
+        when(alertGenerationService.alerts(MATCH_ID)).thenReturn(List.of(new MatchAlertView(
+                UUID.fromString("55555555-5555-5555-5555-555555555555"),
+                MATCH_ID,
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                UUID.fromString("44444444-4444-4444-4444-444444444444"),
+                AlertType.MODEL_PROVIDER_DIVERGENCE,
+                AlertSeverity.WARNING,
+                75,
+                "Model-provider divergence",
+                "Model probability differs materially from available provider probability.",
+                Map.of("divergence", 0.14),
+                Instant.parse("2026-04-30T00:00:00Z")
+        )));
+
+        mockMvc.perform(get("/api/matches/{matchId}/alerts", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].alertType").value("MODEL_PROVIDER_DIVERGENCE"))
+                .andExpect(jsonPath("$[0].severity").value("WARNING"));
+    }
+
+    private LiveTrackingView liveTrackingView(boolean active, LiveTrackingStatus status) {
+        return new LiveTrackingView(
+                UUID.fromString("66666666-6666-6666-6666-666666666666"),
+                MATCH_ID,
+                "sr:sport_event:70075140",
+                status,
+                active,
+                CoverageMode.RICH,
+                new TeamView("sr:competitor:3224", "Home Team"),
+                new TeamView("sr:competitor:266595", "Away Team"),
+                65,
+                1,
+                0,
+                null,
+                1,
+                Instant.parse("2026-04-30T00:00:00Z"),
+                active ? null : Instant.parse("2026-04-30T00:10:00Z"),
+                Instant.parse("2026-04-30T00:05:00Z"),
+                Instant.parse("2026-04-30T00:05:00Z"),
+                null,
+                0,
+                null,
+                Instant.parse("2026-04-30T00:05:00Z")
+        );
     }
 
     @TestConfiguration
@@ -409,6 +505,16 @@ class MatchTrackingControllerTest {
                     );
                 }
             };
+        }
+
+        @Bean
+        LiveTrackingService liveTrackingService() {
+            return mock(LiveTrackingService.class);
+        }
+
+        @Bean
+        AlertGenerationService alertGenerationService() {
+            return mock(AlertGenerationService.class);
         }
     }
 }

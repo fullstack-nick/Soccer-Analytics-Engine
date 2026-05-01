@@ -27,4 +27,7 @@ public interface MatchEventRepository extends JpaRepository<MatchEventEntity, UU
             @Param("matchId") UUID matchId,
             @Param("eventType") MatchEventType eventType
     );
+
+    @Query("select coalesce(max(e.eventSequence), 0) from MatchEventEntity e where e.match.id = :matchId")
+    long maxEventSequence(@Param("matchId") UUID matchId);
 }

@@ -21,5 +21,7 @@ sports:
     access-level: trial
     package-name: soccer-extended
     base-url: https://api.sportradar.com
-    request-delay-ms: 1500
+    request-delay-ms: 1100
     max-retries: 2
+  live:
+    enabled: false

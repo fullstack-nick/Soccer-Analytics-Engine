@@ -6,12 +6,13 @@ snapshots, replay, and backtesting.
 
 The current implementation includes the Stage 1 backend foundation, Stage 2
 Sportradar ingestion, Stage 3 event-sourced state plus feature extraction,
-Stage 4 explainable probability generation, Stage 5 replay/backtesting, and
-Stage 5.5 model-evaluation hardening:
+Stage 4 explainable probability generation, Stage 5 replay/backtesting,
+Stage 5.5 model-evaluation hardening, and Stage 6 live tracking/alerts:
 raw payload storage, cache-aware provider calls, coverage detection, normalized
 timeline events, deterministic state rebuilds, model-ready feature snapshots,
 persisted win/draw/loss probability timelines, synchronous backtest runs, and
-model-vs-provider comparison views.
+model-vs-provider comparison views, explicit live tracking, scheduled live
+polling, and persisted match intelligence alerts.
 
 ## Stack
 
@@ -70,6 +71,10 @@ GET /api/matches/{matchId}/probabilities/latest
 GET /api/matches/{matchId}/probabilities/timeline
 POST /api/matches/{matchId}/replay
 GET /api/matches/{matchId}/model-comparison
+POST /api/matches/{matchId}/track
+DELETE /api/matches/{matchId}/track
+GET /api/matches/live
+GET /api/matches/{matchId}/alerts
 POST /api/matches/{matchId}/state/rebuild
 POST /api/matches/{matchId}/probabilities/rebuild
 GET /api/matches/provider?sportEventId=sr:sport_event:70075140
@@ -174,6 +179,30 @@ Provider probability is read from feature snapshots when Sportradar season
 probabilities are available. It is comparison context only; the probability
 engine does not blend provider values into its own output.
 
+## Stage 6 Live Tracking And Alerts
+
+Live tracking is explicit and disabled by default to protect Sportradar quota.
+To track a live match, first store it with `POST /api/matches/track`, then start
+live tracking by internal match ID:
+
+```text
+POST /api/matches/{matchId}/track
+DELETE /api/matches/{matchId}/track
+GET /api/matches/live
+GET /api/matches/{matchId}/alerts
+```
+
+When enabled, the scheduled poller reads Sportradar live schedules, live
+timeline delta, and occasional full live timelines. New or updated live events
+are written into the same `match_events` table used by historical tracking, then
+the existing rebuild pipeline regenerates state, features, probabilities, and
+alerts.
+
+Alert rules currently cover provider/model divergence, red-card probability
+swings, pressure despite losing, xG contradicting the scoreline, and late
+momentum shifts. Alerts are deduplicated by deterministic keys so repeated
+rebuilds or repeated live deltas do not create duplicate alert rows.
+
 ## Configuration
 
 Runtime defaults are safe for local development:
@@ -189,6 +218,10 @@ SPORTRADAR_PACKAGE_NAME=soccer-extended
 SPORTRADAR_BASE_URL=https://api.sportradar.com
 SPORTRADAR_REQUEST_DELAY_MS=1100
 SPORTRADAR_MAX_RETRIES=2
+SPORTS_LIVE_ENABLED=false
+SPORTS_LIVE_POLL_DELAY_MS=10000
+SPORTS_LIVE_FULL_TIMELINE_REFRESH_MS=60000
+SPORTS_LIVE_MAX_MATCHES_PER_TICK=3
 ```
 
 ## Verify
@@ -226,10 +259,15 @@ Included:
 - fixed-minute Brier score, log loss, calibration, baselines, diagnostics, and event-movement metrics
 - hardened event semantics for set pieces, offside, penalties, and injuries
 - model-vs-provider probability divergence comparison
+- explicit live match tracking registry
+- scheduled live schedules/timeline-delta polling, disabled by default
+- live events ingested into the same event store and rebuild pipeline
+- persisted alert generation with deduplication
 - match tracking/state/events/features REST API
 - probability REST API
+- live tracking and alert REST API
 
 Not included until later stages:
 
-- live polling
-- alerting
+- Kafka/RabbitMQ streaming
+- frontend dashboard
