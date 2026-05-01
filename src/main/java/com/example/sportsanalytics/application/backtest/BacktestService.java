@@ -14,21 +14,28 @@ import com.example.sportsanalytics.application.match.MatchTrackingUseCase;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
 import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
 import com.example.sportsanalytics.persistence.entity.BacktestRunEntity;
+import com.example.sportsanalytics.persistence.entity.FeatureSnapshotEntity;
+import com.example.sportsanalytics.persistence.entity.MatchEventEntity;
 import com.example.sportsanalytics.persistence.entity.MatchStateEntity;
 import com.example.sportsanalytics.persistence.entity.ProbabilitySnapshotEntity;
 import com.example.sportsanalytics.persistence.repository.BacktestRunRepository;
+import com.example.sportsanalytics.persistence.repository.FeatureSnapshotRepository;
 import com.example.sportsanalytics.persistence.repository.MatchStateRepository;
 import com.example.sportsanalytics.persistence.repository.ProbabilitySnapshotRepository;
 import com.example.sportsanalytics.sportradar.client.SportradarClient;
 import com.example.sportsanalytics.sportradar.client.SportradarEndpoint;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +45,7 @@ public class BacktestService {
     private final SportradarClient sportradarClient;
     private final MatchTrackingUseCase matchTrackingUseCase;
     private final MatchStateRepository matchStateRepository;
+    private final FeatureSnapshotRepository featureSnapshotRepository;
     private final ProbabilitySnapshotRepository probabilitySnapshotRepository;
     private final BacktestRunRepository backtestRunRepository;
     private final ObjectMapper objectMapper;
@@ -50,11 +58,12 @@ public class BacktestService {
             SportradarClient sportradarClient,
             MatchTrackingUseCase matchTrackingUseCase,
             MatchStateRepository matchStateRepository,
+            FeatureSnapshotRepository featureSnapshotRepository,
             ProbabilitySnapshotRepository probabilitySnapshotRepository,
             BacktestRunRepository backtestRunRepository,
             ObjectMapper objectMapper
     ) {
-        this(sportradarClient, matchTrackingUseCase, matchStateRepository, probabilitySnapshotRepository,
+        this(sportradarClient, matchTrackingUseCase, matchStateRepository, featureSnapshotRepository, probabilitySnapshotRepository,
                 backtestRunRepository, objectMapper, Clock.systemUTC());
     }
 
@@ -62,6 +71,7 @@ public class BacktestService {
             SportradarClient sportradarClient,
             MatchTrackingUseCase matchTrackingUseCase,
             MatchStateRepository matchStateRepository,
+            FeatureSnapshotRepository featureSnapshotRepository,
             ProbabilitySnapshotRepository probabilitySnapshotRepository,
             BacktestRunRepository backtestRunRepository,
             ObjectMapper objectMapper,
@@ -70,6 +80,7 @@ public class BacktestService {
         this.sportradarClient = sportradarClient;
         this.matchTrackingUseCase = matchTrackingUseCase;
         this.matchStateRepository = matchStateRepository;
+        this.featureSnapshotRepository = featureSnapshotRepository;
         this.probabilitySnapshotRepository = probabilitySnapshotRepository;
         this.backtestRunRepository = backtestRunRepository;
         this.objectMapper = objectMapper;
@@ -123,15 +134,21 @@ public class BacktestService {
     private BacktestMatchSample sample(TrackMatchResult tracked) {
         MatchStateEntity latestState = matchStateRepository.findFirstByMatch_IdOrderByVersionDesc(tracked.matchId())
                 .orElseThrow(() -> new IllegalStateException("missing latest state for match " + tracked.matchId()));
+        Map<String, MatchStateEntity> statesByEvent = matchStateRepository
+                .findByMatchIdOrderByVersionAscWithEvent(tracked.matchId())
+                .stream()
+                .collect(Collectors.toMap(this::eventKey, Function.identity(), (first, second) -> second, LinkedHashMap::new));
+        Map<String, FeatureSnapshotEntity> featuresByEvent = featureSnapshotRepository
+                .findByMatchIdOrderByTimeline(tracked.matchId())
+                .stream()
+                .collect(Collectors.toMap(this::eventKey, Function.identity(), (first, second) -> second, LinkedHashMap::new));
         List<BacktestProbabilitySample> probabilities = probabilitySnapshotRepository
                 .findByMatchIdOrderByTimeline(tracked.matchId())
                 .stream()
-                .map(snapshot -> new BacktestProbabilitySample(
-                        snapshot.getEvent() == null ? null : snapshot.getEvent().getEventSequence(),
-                        snapshot.getEvent() == null ? "UNKNOWN" : snapshot.getEvent().getEventType().name(),
-                        snapshot.getHomeWin(),
-                        snapshot.getDraw(),
-                        snapshot.getAwayWin()
+                .map(snapshot -> probabilitySample(
+                        snapshot,
+                        statesByEvent.get(eventKey(snapshot.getEvent())),
+                        featuresByEvent.get(eventKey(snapshot.getEvent()))
                 ))
                 .toList();
         return new BacktestMatchSample(
@@ -150,6 +167,53 @@ public class BacktestService {
             return Outcome.AWAY_WIN;
         }
         return Outcome.DRAW;
+    }
+
+    private BacktestProbabilitySample probabilitySample(
+            ProbabilitySnapshotEntity snapshot,
+            MatchStateEntity state,
+            FeatureSnapshotEntity feature
+    ) {
+        ProviderProbability providerProbability = providerProbability(feature);
+        return new BacktestProbabilitySample(
+                snapshot.getEvent() == null ? null : snapshot.getEvent().getEventSequence(),
+                snapshot.getEvent() == null ? "UNKNOWN" : snapshot.getEvent().getEventType().name(),
+                snapshot.getMinute(),
+                state == null ? 0 : state.getHomeScore(),
+                state == null ? 0 : state.getAwayScore(),
+                snapshot.getHomeWin(),
+                snapshot.getDraw(),
+                snapshot.getAwayWin(),
+                providerProbability == null ? null : providerProbability.homeWin(),
+                providerProbability == null ? null : providerProbability.draw(),
+                providerProbability == null ? null : providerProbability.awayWin()
+        );
+    }
+
+    private ProviderProbability providerProbability(FeatureSnapshotEntity feature) {
+        if (feature == null || feature.getFeaturesJson() == null) {
+            return null;
+        }
+        JsonNode providerProbability = feature.getFeaturesJson().path("providerProbability");
+        JsonNode home = providerProbability.path("homeWin");
+        JsonNode draw = providerProbability.path("draw");
+        JsonNode away = providerProbability.path("awayWin");
+        if (!home.isNumber() || !draw.isNumber() || !away.isNumber()) {
+            return null;
+        }
+        return new ProviderProbability(home.asDouble(), draw.asDouble(), away.asDouble());
+    }
+
+    private String eventKey(MatchStateEntity state) {
+        return eventKey(state.getEvent());
+    }
+
+    private String eventKey(FeatureSnapshotEntity feature) {
+        return eventKey(feature.getEvent());
+    }
+
+    private String eventKey(MatchEventEntity event) {
+        return event == null ? "summary" : event.getId().toString();
     }
 
     private String status(int processed, int failed, int requested) {
@@ -192,5 +256,8 @@ public class BacktestService {
         }
         return objectMapper.convertValue(node, new TypeReference<List<BacktestFailureView>>() {
         });
+    }
+
+    private record ProviderProbability(double homeWin, double draw, double awayWin) {
     }
 }

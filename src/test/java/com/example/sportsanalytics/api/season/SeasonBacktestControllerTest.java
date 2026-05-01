@@ -47,7 +47,7 @@ class SeasonBacktestControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.runId").value(RUN_ID.toString()))
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.metrics.matchCount").value(1));
+                .andExpect(jsonPath("$.metrics.evaluationVersion").value("stage5.5-v1"));
     }
 
     @Test
@@ -71,14 +71,17 @@ class SeasonBacktestControllerTest {
         return new BacktestRunView(
                 RUN_ID,
                 "sr:season:1",
-                "xg-poisson-v1",
+                "xg-poisson-v1.1",
                 "COMPLETED",
                 1,
                 1,
                 0,
                 Instant.parse("2026-04-30T00:00:00Z"),
                 Instant.parse("2026-04-30T00:00:01Z"),
-                Map.of("matchCount", 1),
+                Map.of(
+                        "evaluationVersion", "stage5.5-v1",
+                        "headline", Map.of("sampleCount", 1)
+                ),
                 List.of()
         );
     }

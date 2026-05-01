@@ -4,20 +4,20 @@ import java.util.List;
 import java.util.Map;
 
 public record BacktestMetrics(
-        int matchCount,
-        int probabilitySnapshotCount,
-        double brierScore,
-        double logLoss,
-        double finalSnapshotTopPickAccuracy,
-        List<CalibrationBucket> calibrationBuckets,
-        Map<String, Double> averageProbabilityMovementByEventType,
+        String evaluationVersion,
+        EvaluationMetricSummary headline,
+        List<FixedMinuteMetric> fixedMinuteMetrics,
+        EvaluationMetricSummary allInPlay,
+        FinalSnapshotDiagnostic finalSnapshotDiagnostic,
+        BaselineMetrics baselines,
+        List<MinuteBucketCalibration> minuteBucketCalibration,
+        Map<String, Double> eventMovement,
         List<BacktestMatchMetrics> matchMetrics
 ) {
     public BacktestMetrics {
-        calibrationBuckets = List.copyOf(calibrationBuckets == null ? List.of() : calibrationBuckets);
-        averageProbabilityMovementByEventType = Map.copyOf(
-                averageProbabilityMovementByEventType == null ? Map.of() : averageProbabilityMovementByEventType
-        );
+        fixedMinuteMetrics = List.copyOf(fixedMinuteMetrics == null ? List.of() : fixedMinuteMetrics);
+        minuteBucketCalibration = List.copyOf(minuteBucketCalibration == null ? List.of() : minuteBucketCalibration);
+        eventMovement = Map.copyOf(eventMovement == null ? Map.of() : eventMovement);
         matchMetrics = List.copyOf(matchMetrics == null ? List.of() : matchMetrics);
     }
 }

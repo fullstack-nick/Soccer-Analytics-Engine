@@ -9,5 +9,5 @@ public record FeatureExtractionResult(
         CoverageMode coverageMode,
         String featureSetVersion
 ) {
-    public static final String VERSION = "stage3-v1";
+    public static final String VERSION = "stage5.5-v1";
 }

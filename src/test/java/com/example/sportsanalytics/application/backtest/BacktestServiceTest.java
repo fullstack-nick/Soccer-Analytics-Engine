@@ -19,11 +19,13 @@ import com.example.sportsanalytics.domain.model.MatchEventType;
 import com.example.sportsanalytics.domain.model.TeamSide;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
 import com.example.sportsanalytics.persistence.entity.BacktestRunEntity;
+import com.example.sportsanalytics.persistence.entity.FeatureSnapshotEntity;
 import com.example.sportsanalytics.persistence.entity.MatchEntity;
 import com.example.sportsanalytics.persistence.entity.MatchEventEntity;
 import com.example.sportsanalytics.persistence.entity.MatchStateEntity;
 import com.example.sportsanalytics.persistence.entity.ProbabilitySnapshotEntity;
 import com.example.sportsanalytics.persistence.repository.BacktestRunRepository;
+import com.example.sportsanalytics.persistence.repository.FeatureSnapshotRepository;
 import com.example.sportsanalytics.persistence.repository.MatchStateRepository;
 import com.example.sportsanalytics.persistence.repository.ProbabilitySnapshotRepository;
 import com.example.sportsanalytics.sportradar.client.SportradarClient;
@@ -48,12 +50,14 @@ class BacktestServiceTest {
     private final SportradarClient sportradarClient = mock(SportradarClient.class);
     private final MatchTrackingUseCase matchTrackingUseCase = mock(MatchTrackingUseCase.class);
     private final MatchStateRepository matchStateRepository = mock(MatchStateRepository.class);
+    private final FeatureSnapshotRepository featureSnapshotRepository = mock(FeatureSnapshotRepository.class);
     private final ProbabilitySnapshotRepository probabilitySnapshotRepository = mock(ProbabilitySnapshotRepository.class);
     private final BacktestRunRepository backtestRunRepository = mock(BacktestRunRepository.class);
     private final BacktestService service = new BacktestService(
             sportradarClient,
             matchTrackingUseCase,
             matchStateRepository,
+            featureSnapshotRepository,
             probabilitySnapshotRepository,
             backtestRunRepository,
             objectMapper,
@@ -75,7 +79,8 @@ class BacktestServiceTest {
         assertThat(view.status()).isEqualTo("COMPLETED");
         assertThat(view.requestedMatchCount()).isEqualTo(1);
         assertThat(view.processedMatchCount()).isEqualTo(1);
-        assertThat(view.metrics()).containsEntry("matchCount", 1);
+        assertThat(view.metrics()).containsEntry("evaluationVersion", "stage5.5-v1");
+        assertThat(view.metrics()).containsKeys("headline", "fixedMinuteMetrics", "baselines", "finalSnapshotDiagnostic");
         verify(sportradarClient, never()).fetch(any(), any(), anyBoolean());
     }
 
@@ -140,11 +145,21 @@ class BacktestServiceTest {
     }
 
     private void stubSuccessfulMatch(String sportEventId) {
+        MatchEventEntity shot = event(1, MatchEventType.SHOT, 15, false);
+        MatchEventEntity goal = event(2, MatchEventType.GOAL, 60, true);
         when(matchTrackingUseCase.track(new TrackMatchCommand(sportEventId, false))).thenReturn(trackResult(sportEventId));
         when(matchStateRepository.findFirstByMatch_IdOrderByVersionDesc(MATCH_ID)).thenReturn(Optional.of(state()));
+        when(matchStateRepository.findByMatchIdOrderByVersionAscWithEvent(MATCH_ID)).thenReturn(List.of(
+                state(shot, 1, 15, 0, 0),
+                state(goal, 2, 60, 1, 0)
+        ));
+        when(featureSnapshotRepository.findByMatchIdOrderByTimeline(MATCH_ID)).thenReturn(List.of(
+                feature(shot, true),
+                feature(goal, false)
+        ));
         when(probabilitySnapshotRepository.findByMatchIdOrderByTimeline(MATCH_ID)).thenReturn(List.of(
-                probability(0.55, 0.25, 0.20),
-                probability(0.80, 0.15, 0.05)
+                probability(shot, 15, 0.55, 0.25, 0.20),
+                probability(goal, 60, 0.80, 0.15, 0.05)
         ));
     }
 
@@ -180,13 +195,18 @@ class BacktestServiceTest {
     }
 
     private MatchStateEntity state() {
+        return state(null, 2, 90, 2, 1);
+    }
+
+    private MatchStateEntity state(MatchEventEntity event, long version, int minute, int homeScore, int awayScore) {
         MatchStateEntity state = new MatchStateEntity();
         state.setId(UUID.randomUUID());
         state.setMatch(match());
-        state.setVersion(2);
-        state.setMinute(90);
-        state.setHomeScore(2);
-        state.setAwayScore(1);
+        state.setEvent(event);
+        state.setVersion(version);
+        state.setMinute(minute);
+        state.setHomeScore(homeScore);
+        state.setAwayScore(awayScore);
         state.setHomeRedCards(0);
         state.setAwayRedCards(0);
         state.setStateJson(objectMapper.createObjectNode());
@@ -194,16 +214,37 @@ class BacktestServiceTest {
         return state;
     }
 
-    private ProbabilitySnapshotEntity probability(double home, double draw, double away) {
+    private FeatureSnapshotEntity feature(MatchEventEntity event, boolean withProviderProbability) {
+        FeatureSnapshotEntity feature = new FeatureSnapshotEntity();
+        feature.setId(UUID.randomUUID());
+        feature.setMatch(match());
+        feature.setEvent(event);
+        feature.setMinute(event.getOccurredAtMinute());
+        var features = objectMapper.createObjectNode();
+        if (withProviderProbability) {
+            features.set("providerProbability", objectMapper.createObjectNode()
+                    .put("homeWin", 0.50)
+                    .put("draw", 0.30)
+                    .put("awayWin", 0.20));
+        }
+        feature.setFeaturesJson(features);
+        feature.setCoverageMode(CoverageMode.RICH);
+        feature.setFeatureSetVersion("stage5.5-v1");
+        feature.setAvailabilityJson(objectMapper.createObjectNode());
+        feature.setCreatedAt(NOW);
+        return feature;
+    }
+
+    private ProbabilitySnapshotEntity probability(MatchEventEntity event, int minute, double home, double draw, double away) {
         ProbabilitySnapshotEntity probability = new ProbabilitySnapshotEntity();
         probability.setId(UUID.randomUUID());
         probability.setMatch(match());
-        probability.setEvent(event());
-        probability.setMinute(90);
+        probability.setEvent(event);
+        probability.setMinute(minute);
         probability.setHomeWin(home);
         probability.setDraw(draw);
         probability.setAwayWin(away);
-        probability.setModelVersion("xg-poisson-v1");
+        probability.setModelVersion("xg-poisson-v1.1");
         probability.setModelConfidence(0.80);
         probability.setCoverageQuality("HIGH");
         probability.setExplanationsJson(objectMapper.createArrayNode());
@@ -212,17 +253,17 @@ class BacktestServiceTest {
         return probability;
     }
 
-    private MatchEventEntity event() {
+    private MatchEventEntity event(long sequence, MatchEventType type, int minute, boolean scoreChanged) {
         MatchEventEntity event = new MatchEventEntity();
         event.setId(UUID.randomUUID());
         event.setMatch(match());
-        event.setProviderEventId("event-1");
-        event.setEventSequence(1);
-        event.setEventType(MatchEventType.GOAL);
-        event.setOccurredAtMinute(60);
+        event.setProviderEventId("event-" + sequence);
+        event.setEventSequence(sequence);
+        event.setEventType(type);
+        event.setOccurredAtMinute(minute);
         event.setTeamSide(TeamSide.HOME);
         event.setPlayerIds(objectMapper.createArrayNode());
-        event.setScoreChanged(true);
+        event.setScoreChanged(scoreChanged);
         event.setSourceTimelineType(TimelineSourceType.EXTENDED);
         event.setReceivedAt(NOW);
         return event;

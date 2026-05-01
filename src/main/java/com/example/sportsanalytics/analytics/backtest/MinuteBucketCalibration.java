@@ -1,8 +1,8 @@
 package com.example.sportsanalytics.analytics.backtest;
 
-public record CalibrationBucket(
+public record MinuteBucketCalibration(
         String bucket,
-        int count,
+        int sampleCount,
         double averageConfidence,
         double empiricalAccuracy
 ) {

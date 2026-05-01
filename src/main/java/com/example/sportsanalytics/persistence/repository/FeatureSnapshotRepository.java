@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface FeatureSnapshotRepository extends JpaRepository<FeatureSnapshotEntity, UUID> {
     @Query("""
             select f from FeatureSnapshotEntity f
-            left join f.event e
+            left join fetch f.event e
             where f.match.id = :matchId
             order by f.minute asc, coalesce(e.eventSequence, 0) asc, f.createdAt asc
             """)

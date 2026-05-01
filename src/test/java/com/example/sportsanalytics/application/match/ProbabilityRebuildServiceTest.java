@@ -162,7 +162,7 @@ class ProbabilityRebuildServiceTest {
         feature.setEvent(event);
         feature.setMinute(70);
         feature.setCoverageMode(CoverageMode.RICH);
-        feature.setFeatureSetVersion("stage3-v1");
+        feature.setFeatureSetVersion("stage5.5-v1");
         ObjectNode features = objectMapper.createObjectNode();
         features.put("scoreDifference", 0);
         features.put("timeRemainingMinutes", 20);
@@ -179,7 +179,7 @@ class ProbabilityRebuildServiceTest {
         feature.setFeaturesJson(features);
         ObjectNode availability = objectMapper.createObjectNode();
         availability.put("coverageMode", "RICH");
-        availability.put("featureSetVersion", "stage3-v1");
+        availability.put("featureSetVersion", "stage5.5-v1");
         availability.set("availableFeatures", objectMapper.valueToTree(List.of(
                 "scoreDifference",
                 "timeRemainingRatio",

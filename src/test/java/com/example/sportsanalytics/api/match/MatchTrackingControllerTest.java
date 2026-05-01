@@ -154,7 +154,7 @@ class MatchTrackingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].homeWin").value(0.72))
-                .andExpect(jsonPath("$[0].modelVersion").value("xg-poisson-v1"))
+                .andExpect(jsonPath("$[0].modelVersion").value("xg-poisson-v1.1"))
                 .andExpect(jsonPath("$[0].featureContributions.expectedHomeGoalsRemaining").value(0.4));
     }
 
@@ -313,7 +313,7 @@ class MatchTrackingControllerTest {
                             3L,
                             30,
                             CoverageMode.RICH,
-                            "stage3-v1",
+                            "stage5.5-v1",
                             Map.of("scoreDifference", 1),
                             Map.of(
                                     "availableFeatures", List.of("scoreDifference"),
@@ -339,7 +339,7 @@ class MatchTrackingControllerTest {
                             0.72,
                             0.18,
                             0.10,
-                            "xg-poisson-v1",
+                            "xg-poisson-v1.1",
                             0.81,
                             "HIGH",
                             List.of("Score is 1-0 in minute 30."),
@@ -361,7 +361,7 @@ class MatchTrackingControllerTest {
                             0.72,
                             0.18,
                             0.10,
-                            "xg-poisson-v1",
+                            "xg-poisson-v1.1",
                             0.81,
                             "HIGH",
                             List.of("Score is 1-0 in minute 30."),

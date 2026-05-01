@@ -7,8 +7,10 @@ public record BacktestMatchMetrics(
         String providerMatchId,
         Outcome actualOutcome,
         int probabilitySnapshots,
-        double brierScore,
-        double logLoss,
+        int inPlaySnapshots,
+        int fixedMinuteSamples,
+        double headlineBrierScore,
+        double headlineLogLoss,
         boolean finalSnapshotTopPickCorrect
 ) {
 }

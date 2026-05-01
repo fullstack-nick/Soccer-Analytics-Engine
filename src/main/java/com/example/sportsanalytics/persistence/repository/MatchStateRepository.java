@@ -14,6 +14,14 @@ public interface MatchStateRepository extends JpaRepository<MatchStateEntity, UU
 
     List<MatchStateEntity> findByMatch_IdOrderByVersionAsc(UUID matchId);
 
+    @Query("""
+            select s from MatchStateEntity s
+            left join fetch s.event e
+            where s.match.id = :matchId
+            order by s.version asc
+            """)
+    List<MatchStateEntity> findByMatchIdOrderByVersionAscWithEvent(@Param("matchId") UUID matchId);
+
     @Modifying
     @Query("delete from MatchStateEntity s where s.match.id = :matchId")
     void deleteByMatchId(@Param("matchId") UUID matchId);

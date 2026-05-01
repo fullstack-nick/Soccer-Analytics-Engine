@@ -112,6 +112,10 @@ public class SportradarEventNormalizer {
                         || event.eventType() == MatchEventType.FOUL
                         || event.eventType() == MatchEventType.CARD
                         || event.eventType() == MatchEventType.SUBSTITUTION
+                        || event.eventType() == MatchEventType.SET_PIECE
+                        || event.eventType() == MatchEventType.OFFSIDE
+                        || event.eventType() == MatchEventType.PENALTY
+                        || event.eventType() == MatchEventType.INJURY
                         || event.eventType() == MatchEventType.VAR
         );
     }

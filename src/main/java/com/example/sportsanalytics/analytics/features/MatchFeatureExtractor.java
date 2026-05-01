@@ -40,7 +40,7 @@ public class MatchFeatureExtractor {
 
         putOptional(features, availability, "teamStrengthDelta", context.providerContext().teamStrengthDelta());
         putOptional(features, availability, "lineupAdjustment", lineupAdjustment(context.lineups()));
-        put(features, availability, "redCardAdjustment", (state.awayRedCards() - state.homeRedCards()) * 0.15);
+        put(features, availability, "redCardAdjustment", (state.awayRedCards() - state.homeRedCards()) * 0.25);
         putOptional(features, availability, "xgDelta", xgDelta(state.eventsSoFar()));
         putOptional(features, availability, "shotPressureDelta", shotPressureDelta(state.eventsSoFar(), state.minute()));
         putOptional(features, availability, "shotLocationQualityDelta", shotLocationQualityDelta(state.eventsSoFar(), state.minute()));
@@ -198,8 +198,7 @@ public class MatchFeatureExtractor {
             }
             boolean homeFinalThird = event.getTeamSide() == TeamSide.HOME && event.getX() >= 67;
             boolean awayFinalThird = event.getTeamSide() == TeamSide.AWAY && event.getX() <= 33;
-            if ((event.getEventType() == MatchEventType.PASS || event.getEventType() == MatchEventType.SHOT
-                    || event.getEventType() == MatchEventType.GOAL) && (homeFinalThird || awayFinalThird)) {
+            if (isAttackingPressureAction(event) && (homeFinalThird || awayFinalThird)) {
                 totals.add(event.getTeamSide(), 1.0);
             }
         }
@@ -209,8 +208,7 @@ public class MatchFeatureExtractor {
     private Double possessionPressureDelta(List<MatchEventEntity> events, int minute) {
         WindowTotals totals = new WindowTotals();
         for (MatchEventEntity event : recentWindow(events, minute)) {
-            if (event.getEventType() == MatchEventType.PASS || event.getEventType() == MatchEventType.SHOT
-                    || event.getEventType() == MatchEventType.GOAL) {
+            if (isAttackingPressureAction(event)) {
                 totals.add(event.getTeamSide(), 1.0);
             }
         }
@@ -244,7 +242,38 @@ public class MatchFeatureExtractor {
         String providerType = event.getProviderEventType() == null ? "" : event.getProviderEventType().toLowerCase(Locale.ROOT);
         return event.getEventType() == MatchEventType.SHOT
                 || event.getEventType() == MatchEventType.GOAL
+                || event.getEventType() == MatchEventType.PENALTY
+                || event.getEventType() == MatchEventType.OFFSIDE
+                || isPositiveSetPiece(event)
                 || providerType.contains("possible_goal");
+    }
+
+    private boolean isAttackingPressureAction(MatchEventEntity event) {
+        return event.getEventType() == MatchEventType.PASS
+                || event.getEventType() == MatchEventType.SHOT
+                || event.getEventType() == MatchEventType.GOAL
+                || event.getEventType() == MatchEventType.PENALTY
+                || event.getEventType() == MatchEventType.OFFSIDE
+                || isPositiveSetPiece(event);
+    }
+
+    private boolean isPositiveSetPiece(MatchEventEntity event) {
+        String providerType = event.getProviderEventType() == null ? "" : event.getProviderEventType().toLowerCase(Locale.ROOT);
+        if (event.getEventType() != MatchEventType.SET_PIECE) {
+            return false;
+        }
+        if (providerType.equals("corner_kick")) {
+            return true;
+        }
+        return providerType.equals("throw_in") && isFinalThirdForSide(event);
+    }
+
+    private boolean isFinalThirdForSide(MatchEventEntity event) {
+        if (event.getX() == null) {
+            return false;
+        }
+        return (event.getTeamSide() == TeamSide.HOME && event.getX() >= 67)
+                || (event.getTeamSide() == TeamSide.AWAY && event.getX() <= 33);
     }
 
     private Double coordinateQuality(MatchEventEntity event) {

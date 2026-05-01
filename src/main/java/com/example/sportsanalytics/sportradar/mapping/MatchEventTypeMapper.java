@@ -17,8 +17,20 @@ public class MatchEventTypeMapper {
         if (scoreChanged && isConfirmedGoalType(type)) {
             return MatchEventType.GOAL;
         }
+        if (type.equals("penalty_awarded") || type.equals("penalty_missed") || type.equals("penalty_saved")) {
+            return MatchEventType.PENALTY;
+        }
         if (type.equals("possible_goal")) {
             return MatchEventType.SHOT;
+        }
+        if (type.equals("corner_kick") || type.equals("throw_in") || type.equals("goal_kick")) {
+            return MatchEventType.SET_PIECE;
+        }
+        if (type.equals("offside")) {
+            return MatchEventType.OFFSIDE;
+        }
+        if (type.equals("injury") || type.equals("injury_return") || type.equals("injury_time_shown")) {
+            return MatchEventType.INJURY;
         }
         if (type.contains("shot")) {
             return MatchEventType.SHOT;

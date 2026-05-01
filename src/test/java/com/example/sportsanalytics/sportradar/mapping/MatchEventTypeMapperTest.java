@@ -18,4 +18,18 @@ class MatchEventTypeMapperTest {
     void mapsPossibleGoalAsShotPressureEvent() {
         assertThat(mapper.map("possible_goal", false)).isEqualTo(MatchEventType.SHOT);
     }
+
+    @Test
+    void mapsRealProviderEventSemantics() {
+        assertThat(mapper.map("corner_kick", false)).isEqualTo(MatchEventType.SET_PIECE);
+        assertThat(mapper.map("throw_in", false)).isEqualTo(MatchEventType.SET_PIECE);
+        assertThat(mapper.map("goal_kick", false)).isEqualTo(MatchEventType.SET_PIECE);
+        assertThat(mapper.map("offside", false)).isEqualTo(MatchEventType.OFFSIDE);
+        assertThat(mapper.map("penalty_awarded", false)).isEqualTo(MatchEventType.PENALTY);
+        assertThat(mapper.map("penalty_missed", false)).isEqualTo(MatchEventType.PENALTY);
+        assertThat(mapper.map("penalty_saved", false)).isEqualTo(MatchEventType.PENALTY);
+        assertThat(mapper.map("injury", false)).isEqualTo(MatchEventType.INJURY);
+        assertThat(mapper.map("injury_return", false)).isEqualTo(MatchEventType.INJURY);
+        assertThat(mapper.map("injury_time_shown", false)).isEqualTo(MatchEventType.INJURY);
+    }
 }

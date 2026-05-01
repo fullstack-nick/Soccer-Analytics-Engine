@@ -57,11 +57,47 @@ class MatchFeatureExtractorTest {
         );
 
         assertThat(result.featuresJson().path("scoreDifference").asInt()).isEqualTo(1);
-        assertThat(result.featuresJson().path("redCardAdjustment").asDouble()).isEqualTo(0.15);
+        assertThat(result.featuresJson().path("redCardAdjustment").asDouble()).isEqualTo(0.25);
         assertThat(result.featuresJson().path("shotPressureDelta").isNumber()).isTrue();
         assertThat(result.featuresJson().path("momentumTrend").asDouble()).isEqualTo(8.0);
         assertThat(result.availabilityJson().path("availableFeatures").toString()).contains("shotPressureDelta");
         assertThat(result.availabilityJson().path("missingFeatures").toString()).contains("providerProbability");
+    }
+
+    @Test
+    void countsAttackingSetPiecesAndPenaltiesAsPressureButNotGoalKicks() throws Exception {
+        MatchEventEntity homeCorner = event(1, "corner_kick", MatchEventType.SET_PIECE, TeamSide.HOME, 30, null, null, null);
+        MatchEventEntity homeFinalThirdThrow = event(2, "throw_in", MatchEventType.SET_PIECE, TeamSide.HOME, 31, 75, 50, null);
+        MatchEventEntity awayGoalKick = event(3, "goal_kick", MatchEventType.SET_PIECE, TeamSide.AWAY, 32, 12, 50, null);
+        MatchEventEntity awayPenalty = event(4, "penalty_awarded", MatchEventType.PENALTY, TeamSide.AWAY, 33, 10, 50, null);
+        EventSourcedMatchState state = new EventSourcedMatchState(
+                4,
+                awayPenalty,
+                33,
+                0,
+                0,
+                0,
+                0,
+                objectMapper.createObjectNode(),
+                List.of(homeCorner, homeFinalThirdThrow, awayGoalKick, awayPenalty)
+        );
+
+        FeatureExtractionResult result = extractor.extract(
+                match(),
+                state,
+                new FeatureSourceContext(
+                        CoverageMode.RICH,
+                        fixture("lineups"),
+                        objectMapper.createObjectNode(),
+                        objectMapper.createObjectNode(),
+                        objectMapper.createObjectNode(),
+                        objectMapper.createObjectNode(),
+                        new ProviderFeatureContext(null, null)
+                )
+        );
+
+        assertThat(result.featuresJson().path("shotPressureDelta").asDouble()).isEqualTo(1.0);
+        assertThat(result.featuresJson().path("possessionPressureDelta").asDouble()).isEqualTo(0.3333333333333333);
     }
 
     private MatchEntity match() {

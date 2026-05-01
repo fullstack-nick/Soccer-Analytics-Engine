@@ -6,7 +6,8 @@ snapshots, replay, and backtesting.
 
 The current implementation includes the Stage 1 backend foundation, Stage 2
 Sportradar ingestion, Stage 3 event-sourced state plus feature extraction,
-Stage 4 explainable probability generation, and Stage 5 replay/backtesting:
+Stage 4 explainable probability generation, Stage 5 replay/backtesting, and
+Stage 5.5 model-evaluation hardening:
 raw payload storage, cache-aware provider calls, coverage detection, normalized
 timeline events, deterministic state rebuilds, model-ready feature snapshots,
 persisted win/draw/loss probability timelines, synchronous backtest runs, and
@@ -114,7 +115,7 @@ Probability snapshots are generated automatically after `POST /api/matches/track
 and `POST /api/matches/{matchId}/state/rebuild`. They can also be regenerated
 explicitly with `POST /api/matches/{matchId}/probabilities/rebuild`.
 
-## Stage 5 Replay And Backtesting
+## Stage 5 Replay, Backtesting, And Evaluation
 
 Replay reuses the same stored-event rebuild pipeline as tracking:
 
@@ -146,9 +147,22 @@ Request body:
 When `sportEventIds` is empty, the service fetches the Sportradar season
 schedule and processes finished matches. When IDs are provided, only those
 matches are processed under the given season ID. A backtest stores status,
-requested/processed/failed counts, per-match failures, Brier score, log loss,
-top-pick accuracy, calibration buckets, and average probability movement by
-event type.
+requested/processed/failed counts, per-match failures, and versioned metrics.
+
+The Stage 5.5 metrics JSON uses `evaluationVersion=stage5.5-v1`. Its headline
+score is based on fixed-minute samples only: `0`, `15`, `30`, `HT`, `60`, `75`,
+and `85`. Final snapshots are reported separately as diagnostics because they
+mostly measure whether the model can read the final score.
+
+Backtest metrics also include all in-play snapshots, random/score-only/provider
+baselines, minute-bucket calibration, per-match summaries, and average
+probability movement by event type. Provider probability remains comparison
+context only.
+
+Event semantics now separate more real Sportradar event categories:
+`SET_PIECE`, `OFFSIDE`, `PENALTY`, and `INJURY`. Set pieces and non-scoring
+penalty/offside events can contribute to pressure features, while confirmed
+score-changing events remain the only events treated as goals.
 
 Model comparison is available per match:
 
@@ -209,7 +223,8 @@ Included:
 - persisted probability timeline with explanations and feature contributions
 - historical match replay over stored events
 - synchronous season or selected-match backtests
-- Brier score, log loss, calibration, accuracy, and event-movement metrics
+- fixed-minute Brier score, log loss, calibration, baselines, diagnostics, and event-movement metrics
+- hardened event semantics for set pieces, offside, penalties, and injuries
 - model-vs-provider probability divergence comparison
 - match tracking/state/events/features REST API
 - probability REST API

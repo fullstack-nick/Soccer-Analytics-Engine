@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
-    public static final String MODEL_VERSION = "xg-poisson-v1";
+    public static final String MODEL_VERSION = "xg-poisson-v1.1";
 
     private static final int MAX_REMAINING_GOALS = 8;
     private static final double MIN_EXPECTED_GOALS = 0.02;
@@ -34,7 +34,7 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
         homeAttackAdvantage += contribution(contributions, "lineupAdjustment",
                 features.lineupAdjustment(), 1.00, 0.18);
         homeAttackAdvantage += contribution(contributions, "redCardAdjustment",
-                features.redCardAdjustment(), 1.00, 0.35);
+                features.redCardAdjustment(), 1.00, 0.55);
         homeAttackAdvantage += scoreStateContribution(contributions, state, timeRemainingRatio);
         homeAttackAdvantage += contribution(contributions, "xgDelta",
                 features.xgDelta(), 0.10, 0.22);
@@ -62,12 +62,15 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
         contributions.put("expectedHomeGoalsRemaining", homeExpectedGoalsRemaining);
         contributions.put("expectedAwayGoalsRemaining", awayExpectedGoalsRemaining);
 
-        Probability probability = simulateOutcomeProbability(
+        Probability rawProbability = simulateOutcomeProbability(
                 state.homeScore(),
                 state.awayScore(),
                 homeExpectedGoalsRemaining,
                 awayExpectedGoalsRemaining
         );
+        double shrinkage = confidenceShrinkage(rawProbability);
+        Probability probability = shrink(rawProbability, shrinkage);
+        contributions.put("confidenceShrinkage", shrinkage);
 
         double confidence = modelConfidence(features);
         String coverageQuality = coverageQuality(confidence);
@@ -153,6 +156,26 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
             return new Probability(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0);
         }
         return new Probability(homeWin / total, draw / total, awayWin / total);
+    }
+
+    private double confidenceShrinkage(Probability probability) {
+        double maxProbability = Math.max(probability.homeWin(), Math.max(probability.draw(), probability.awayWin()));
+        if (maxProbability <= 0.80) {
+            return 0.0;
+        }
+        return Math.min(0.10, (maxProbability - 0.80) * 0.25);
+    }
+
+    private Probability shrink(Probability probability, double shrinkage) {
+        if (shrinkage <= 0.0) {
+            return probability;
+        }
+        double uniform = 1.0 / 3.0;
+        return new Probability(
+                (probability.homeWin() * (1.0 - shrinkage)) + (uniform * shrinkage),
+                (probability.draw() * (1.0 - shrinkage)) + (uniform * shrinkage),
+                (probability.awayWin() * (1.0 - shrinkage)) + (uniform * shrinkage)
+        );
     }
 
     private double[] poissonDistribution(double lambda) {

@@ -39,11 +39,23 @@ class ExpectedGoalsProbabilityEngineTest {
     void redCardAdvantageShiftsProbabilityTowardHomeTeam() {
         ProbabilitySnapshot baseline = engine.calculate(state(60, 0, 0), richFeature(60, 0));
         ProbabilitySnapshot awayRedCard = engine.calculate(state(60, 0, 0), richFeatureBuilder(60, 0)
-                .redCardAdjustment(0.15)
+                .redCardAdjustment(0.25)
                 .build());
 
         assertThat(awayRedCard.probability().homeWin()).isGreaterThan(baseline.probability().homeWin());
         assertThat(awayRedCard.probability().awayWin()).isLessThan(baseline.probability().awayWin());
+    }
+
+    @Test
+    void strongerRedCardAdjustmentMovesProbabilityMoreThanOldWeight() {
+        ProbabilitySnapshot oldWeight = engine.calculate(state(60, 0, 0), richFeatureBuilder(60, 0)
+                .redCardAdjustment(0.15)
+                .build());
+        ProbabilitySnapshot newWeight = engine.calculate(state(60, 0, 0), richFeatureBuilder(60, 0)
+                .redCardAdjustment(0.25)
+                .build());
+
+        assertThat(newWeight.probability().homeWin()).isGreaterThan(oldWeight.probability().homeWin());
     }
 
     @Test
@@ -84,7 +96,22 @@ class ExpectedGoalsProbabilityEngineTest {
     void finishedLevelMatchKeepsDrawProbabilityDominant() {
         ProbabilitySnapshot snapshot = engine.calculate(state(90, 1, 1), richFeature(90, 0));
 
-        assertThat(snapshot.probability().draw()).isGreaterThan(0.94);
+        assertThat(snapshot.probability().draw()).isGreaterThan(0.90);
+        assertThat(snapshot.probability().draw()).isGreaterThan(snapshot.probability().homeWin());
+        assertThat(snapshot.probability().draw()).isGreaterThan(snapshot.probability().awayWin());
+    }
+
+    @Test
+    void overconfidenceShrinkagePreservesProbabilityInvariant() {
+        ProbabilitySnapshot snapshot = engine.calculate(state(90, 3, 0), richFeature(90, 3));
+
+        Probability probability = snapshot.probability();
+        assertThat(snapshot.modelVersion()).isEqualTo("xg-poisson-v1.1");
+        assertThat(snapshot.featureContributions()).containsKey("confidenceShrinkage");
+        assertThat(probability.homeWin()).isBetween(0.0, 1.0);
+        assertThat(probability.draw()).isBetween(0.0, 1.0);
+        assertThat(probability.awayWin()).isBetween(0.0, 1.0);
+        assertThat(probability.homeWin() + probability.draw() + probability.awayWin()).isCloseTo(1.0, withinTolerance());
     }
 
     private MatchState state(int minute, int homeScore, int awayScore) {
