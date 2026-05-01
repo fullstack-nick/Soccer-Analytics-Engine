@@ -53,5 +53,5 @@ sports:
     access-level: ${SPORTRADAR_ACCESS_LEVEL:trial}
     package-name: ${SPORTRADAR_PACKAGE_NAME:soccer-extended}
     base-url: ${SPORTRADAR_BASE_URL:https://api.sportradar.com}
-    request-delay-ms: ${SPORTRADAR_REQUEST_DELAY_MS:1500}
+    request-delay-ms: ${SPORTRADAR_REQUEST_DELAY_MS:1100}
     max-retries: ${SPORTRADAR_MAX_RETRIES:2}
