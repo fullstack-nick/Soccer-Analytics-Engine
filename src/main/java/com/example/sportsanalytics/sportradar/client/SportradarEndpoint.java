@@ -12,7 +12,8 @@ public enum SportradarEndpoint {
     SEASON_INFO("season_info"),
     SEASON_STANDINGS("season_standings"),
     SEASON_FORM_STANDINGS("season_form_standings"),
-    SEASON_PROBABILITIES("season_probabilities");
+    SEASON_PROBABILITIES("season_probabilities"),
+    SEASON_SCHEDULES("season_schedules");
 
     private final String sourceEndpoint;
 
@@ -36,6 +37,7 @@ public enum SportradarEndpoint {
             case SEASON_STANDINGS -> List.of("seasons", providerId, "standings");
             case SEASON_FORM_STANDINGS -> List.of("seasons", providerId, "form_standings");
             case SEASON_PROBABILITIES -> List.of("seasons", providerId, "probabilities");
+            case SEASON_SCHEDULES -> List.of("seasons", providerId, "schedules");
         };
     }
 }

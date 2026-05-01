@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,7 +19,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "backtest_runs")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class BacktestRunEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -38,7 +37,23 @@ public class BacktestRunEntity {
     @Column(name = "finished_at")
     private Instant finishedAt;
 
+    @Column(name = "status", nullable = false, length = 40)
+    private String status;
+
+    @Column(name = "requested_match_count", nullable = false)
+    private int requestedMatchCount;
+
+    @Column(name = "processed_match_count", nullable = false)
+    private int processedMatchCount;
+
+    @Column(name = "failed_match_count", nullable = false)
+    private int failedMatchCount;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metrics_json", columnDefinition = "jsonb")
     private JsonNode metricsJson;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "failure_json", nullable = false, columnDefinition = "jsonb")
+    private JsonNode failureJson;
 }

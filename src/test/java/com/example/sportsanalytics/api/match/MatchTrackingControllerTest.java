@@ -13,8 +13,11 @@ import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
 import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
+import com.example.sportsanalytics.application.match.dto.ProbabilityTimelinePoint;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
 import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
+import com.example.sportsanalytics.application.match.dto.FinalScoreView;
+import com.example.sportsanalytics.application.match.dto.ReplayMatchResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TeamView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
@@ -23,6 +26,8 @@ import com.example.sportsanalytics.domain.model.CoverageMode;
 import com.example.sportsanalytics.domain.model.MatchEventType;
 import com.example.sportsanalytics.domain.model.TeamSide;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonResult;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonTimelinePoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -99,6 +104,19 @@ class MatchTrackingControllerTest {
     }
 
     @Test
+    void replaysMatch() throws Exception {
+        mockMvc.perform(post("/api/matches/{matchId}/replay", MATCH_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"forceRefresh\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchId").value(MATCH_ID.toString()))
+                .andExpect(jsonPath("$.eventCount").value(1))
+                .andExpect(jsonPath("$.probabilitySnapshotsCreated").value(4))
+                .andExpect(jsonPath("$.finalScore.home").value(1))
+                .andExpect(jsonPath("$.latestProbability.homeWin").value(0.72));
+    }
+
+    @Test
     void returnsStateTimeline() throws Exception {
         mockMvc.perform(get("/api/matches/{matchId}/states", MATCH_ID))
                 .andExpect(status().isOk())
@@ -146,6 +164,25 @@ class MatchTrackingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.homeWin").value(0.72))
                 .andExpect(jsonPath("$.coverageQuality").value("HIGH"));
+    }
+
+    @Test
+    void returnsProbabilityTimeline() throws Exception {
+        mockMvc.perform(get("/api/matches/{matchId}/probabilities/timeline", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].homeScore").value(1))
+                .andExpect(jsonPath("$[0].awayScore").value(0))
+                .andExpect(jsonPath("$[0].homeWin").value(0.72));
+    }
+
+    @Test
+    void returnsModelComparison() throws Exception {
+        mockMvc.perform(get("/api/matches/{matchId}/model-comparison", MATCH_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.providerAvailable").value(true))
+                .andExpect(jsonPath("$.comparedSnapshotCount").value(1))
+                .andExpect(jsonPath("$.maxDivergence").value(0.12));
     }
 
     @Test
@@ -248,6 +285,21 @@ class MatchTrackingControllerTest {
                 }
 
                 @Override
+                public ReplayMatchResult replay(UUID matchId, boolean forceRefresh) {
+                    return new ReplayMatchResult(
+                            MATCH_ID,
+                            "sr:sport_event:70075140",
+                            CoverageMode.RICH,
+                            1,
+                            4,
+                            4,
+                            4,
+                            new FinalScoreView(1, 0),
+                            latestProbability(matchId)
+                    );
+                }
+
+                @Override
                 public List<FeatureSnapshotView> features(UUID matchId) {
                     return List.of(latestFeature(matchId));
                 }
@@ -293,6 +345,53 @@ class MatchTrackingControllerTest {
                             List.of("Score is 1-0 in minute 30."),
                             Map.of("expectedHomeGoalsRemaining", 0.4),
                             Instant.parse("2026-04-30T00:00:00Z")
+                    );
+                }
+
+                @Override
+                public List<ProbabilityTimelinePoint> probabilityTimeline(UUID matchId) {
+                    return List.of(new ProbabilityTimelinePoint(
+                            UUID.fromString("44444444-4444-4444-4444-444444444444"),
+                            MATCH_ID,
+                            UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                            3L,
+                            30,
+                            1,
+                            0,
+                            0.72,
+                            0.18,
+                            0.10,
+                            "xg-poisson-v1",
+                            0.81,
+                            "HIGH",
+                            List.of("Score is 1-0 in minute 30."),
+                            Map.of("expectedHomeGoalsRemaining", 0.4),
+                            Instant.parse("2026-04-30T00:00:00Z")
+                    ));
+                }
+
+                @Override
+                public ModelComparisonResult modelComparison(UUID matchId) {
+                    return new ModelComparisonResult(
+                            MATCH_ID,
+                            "sr:sport_event:70075140",
+                            true,
+                            "Provider probability comparison available.",
+                            1,
+                            0.12,
+                            0.12,
+                            List.of(new ModelComparisonTimelinePoint(
+                                    UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                                    3L,
+                                    30,
+                                    0.72,
+                                    0.18,
+                                    0.10,
+                                    0.60,
+                                    0.25,
+                                    0.15,
+                                    0.12
+                            ))
                     );
                 }
 

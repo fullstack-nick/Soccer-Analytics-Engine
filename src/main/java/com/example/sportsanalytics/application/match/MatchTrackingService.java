@@ -4,14 +4,18 @@ import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
 import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
+import com.example.sportsanalytics.application.match.dto.ProbabilityTimelinePoint;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
 import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
+import com.example.sportsanalytics.application.match.dto.FinalScoreView;
+import com.example.sportsanalytics.application.match.dto.ReplayMatchResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TeamView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
 import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
 import com.example.sportsanalytics.domain.model.MatchEventType;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonResult;
 import com.example.sportsanalytics.persistence.entity.MatchEntity;
 import com.example.sportsanalytics.persistence.entity.MatchEventEntity;
 import com.example.sportsanalytics.persistence.entity.MatchStateEntity;
@@ -217,6 +221,40 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     }
 
     @Override
+    @Transactional
+    public ReplayMatchResult replay(UUID matchId, boolean forceRefresh) {
+        MatchEntity match = matchRepository.findById(matchId).orElseThrow(() -> new MatchNotFoundException(matchId));
+        RebuildMatchStateResult rebuild;
+        if (forceRefresh) {
+            TrackMatchResult tracked = track(new TrackMatchCommand(match.getProviderMatchId(), true));
+            rebuild = new RebuildMatchStateResult(
+                    tracked.matchId(),
+                    tracked.stateSnapshotsCreated(),
+                    tracked.featureSnapshotsCreated(),
+                    tracked.probabilitySnapshotsCreated(),
+                    tracked.stateVersion()
+            );
+            match = matchRepository.findById(tracked.matchId()).orElseThrow(() -> new MatchNotFoundException(tracked.matchId()));
+        } else {
+            rebuild = rebuildService.rebuild(matchId);
+        }
+        MatchEntity currentMatch = match;
+        MatchStateEntity latestState = matchStateRepository.findFirstByMatch_IdOrderByVersionDesc(currentMatch.getId())
+                .orElseThrow(() -> new MatchNotFoundException(currentMatch.getId()));
+        return new ReplayMatchResult(
+                currentMatch.getId(),
+                currentMatch.getProviderMatchId(),
+                currentMatch.getCoverageMode(),
+                matchEventRepository.findByMatchIdOrderByEventSequenceAsc(currentMatch.getId()).size(),
+                rebuild.stateSnapshotsCreated(),
+                rebuild.featureSnapshotsCreated(),
+                rebuild.probabilitySnapshotsCreated(),
+                new FinalScoreView(latestState.getHomeScore(), latestState.getAwayScore()),
+                probabilityRebuildService.latestProbability(currentMatch.getId())
+        );
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<FeatureSnapshotView> features(UUID matchId) {
         return rebuildService.features(matchId);
@@ -238,6 +276,18 @@ public class MatchTrackingService implements MatchTrackingUseCase {
     @Transactional(readOnly = true)
     public ProbabilitySnapshotView latestProbability(UUID matchId) {
         return probabilityRebuildService.latestProbability(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProbabilityTimelinePoint> probabilityTimeline(UUID matchId) {
+        return probabilityRebuildService.probabilityTimeline(matchId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ModelComparisonResult modelComparison(UUID matchId) {
+        return probabilityRebuildService.modelComparison(matchId);
     }
 
     @Override

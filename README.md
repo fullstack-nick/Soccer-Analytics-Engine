@@ -5,11 +5,12 @@ coverage-aware Sportradar ingestion, event-sourced match state, probability
 snapshots, replay, and backtesting.
 
 The current implementation includes the Stage 1 backend foundation, Stage 2
-Sportradar ingestion, Stage 3 event-sourced state plus feature extraction, and
-Stage 4 explainable probability generation: raw payload storage, cache-aware
-provider calls, coverage detection, normalized timeline events, deterministic
-state rebuilds, model-ready feature snapshots, and persisted win/draw/loss
-probability timelines.
+Sportradar ingestion, Stage 3 event-sourced state plus feature extraction,
+Stage 4 explainable probability generation, and Stage 5 replay/backtesting:
+raw payload storage, cache-aware provider calls, coverage detection, normalized
+timeline events, deterministic state rebuilds, model-ready feature snapshots,
+persisted win/draw/loss probability timelines, synchronous backtest runs, and
+model-vs-provider comparison views.
 
 ## Stack
 
@@ -65,6 +66,9 @@ GET /api/matches/{matchId}/features
 GET /api/matches/{matchId}/features/latest
 GET /api/matches/{matchId}/probabilities
 GET /api/matches/{matchId}/probabilities/latest
+GET /api/matches/{matchId}/probabilities/timeline
+POST /api/matches/{matchId}/replay
+GET /api/matches/{matchId}/model-comparison
 POST /api/matches/{matchId}/state/rebuild
 POST /api/matches/{matchId}/probabilities/rebuild
 GET /api/matches/provider?sportEventId=sr:sport_event:70075140
@@ -109,6 +113,52 @@ used only as comparison context. It is not blended into this model's output.
 Probability snapshots are generated automatically after `POST /api/matches/track`
 and `POST /api/matches/{matchId}/state/rebuild`. They can also be regenerated
 explicitly with `POST /api/matches/{matchId}/probabilities/rebuild`.
+
+## Stage 5 Replay And Backtesting
+
+Replay reuses the same stored-event rebuild pipeline as tracking:
+
+```text
+POST /api/matches/{matchId}/replay
+```
+
+With `forceRefresh=false`, replay regenerates state, feature, and probability
+snapshots from already stored events. With `forceRefresh=true`, it re-fetches
+the provider match first, then rebuilds the same analytics timeline.
+
+Backtests run synchronously and persist the completed run:
+
+```text
+POST /api/seasons/{seasonId}/backtests
+GET /api/backtests/{runId}
+```
+
+Request body:
+
+```json
+{
+  "sportEventIds": [],
+  "forceRefresh": false,
+  "continueOnMatchFailure": true
+}
+```
+
+When `sportEventIds` is empty, the service fetches the Sportradar season
+schedule and processes finished matches. When IDs are provided, only those
+matches are processed under the given season ID. A backtest stores status,
+requested/processed/failed counts, per-match failures, Brier score, log loss,
+top-pick accuracy, calibration buckets, and average probability movement by
+event type.
+
+Model comparison is available per match:
+
+```text
+GET /api/matches/{matchId}/model-comparison
+```
+
+Provider probability is read from feature snapshots when Sportradar season
+probabilities are available. It is comparison context only; the probability
+engine does not blend provider values into its own output.
 
 ## Configuration
 
@@ -157,11 +207,14 @@ Included:
 - persisted feature timeline
 - expected-goals/Poisson probability engine
 - persisted probability timeline with explanations and feature contributions
+- historical match replay over stored events
+- synchronous season or selected-match backtests
+- Brier score, log loss, calibration, accuracy, and event-movement metrics
+- model-vs-provider probability divergence comparison
 - match tracking/state/events/features REST API
 - probability REST API
 
 Not included until later stages:
 
 - live polling
-- replay endpoints
-- backtesting
+- alerting

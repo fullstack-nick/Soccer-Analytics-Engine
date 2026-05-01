@@ -5,11 +5,14 @@ import com.example.sportsanalytics.application.match.dto.FeatureSnapshotView;
 import com.example.sportsanalytics.application.match.dto.MatchEventView;
 import com.example.sportsanalytics.application.match.dto.MatchStateView;
 import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
+import com.example.sportsanalytics.application.match.dto.ProbabilityTimelinePoint;
 import com.example.sportsanalytics.application.match.dto.RebuildMatchStateResult;
 import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
+import com.example.sportsanalytics.application.match.dto.ReplayMatchResult;
 import com.example.sportsanalytics.application.match.dto.StoredMatchView;
 import com.example.sportsanalytics.application.match.dto.TrackMatchCommand;
 import com.example.sportsanalytics.application.match.dto.TrackMatchResult;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonResult;
 import com.example.sportsanalytics.domain.model.MatchEventType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,6 +61,15 @@ public class MatchTrackingController {
         return matchTrackingUseCase.rebuildState(matchId);
     }
 
+    @Operation(summary = "Replay a stored match through the event-sourced analytics pipeline")
+    @PostMapping("/{matchId}/replay")
+    public ReplayMatchResult replay(
+            @PathVariable UUID matchId,
+            @RequestBody(required = false) ReplayMatchRequest request
+    ) {
+        return matchTrackingUseCase.replay(matchId, request != null && request.forceRefresh());
+    }
+
     @Operation(summary = "Rebuild persisted probability snapshots from stored state and feature snapshots")
     @PostMapping("/{matchId}/probabilities/rebuild")
     public RebuildProbabilityResult rebuildProbabilities(@PathVariable UUID matchId) {
@@ -97,9 +109,21 @@ public class MatchTrackingController {
         return matchTrackingUseCase.probabilities(matchId);
     }
 
+    @Operation(summary = "Return probability timeline points with score context")
+    @GetMapping("/{matchId}/probabilities/timeline")
+    public List<ProbabilityTimelinePoint> probabilityTimeline(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.probabilityTimeline(matchId);
+    }
+
     @Operation(summary = "Return latest probability snapshot for a stored match")
     @GetMapping("/{matchId}/probabilities/latest")
     public ProbabilitySnapshotView latestProbability(@PathVariable UUID matchId) {
         return matchTrackingUseCase.latestProbability(matchId);
+    }
+
+    @Operation(summary = "Compare model probability against provider probability when available")
+    @GetMapping("/{matchId}/model-comparison")
+    public ModelComparisonResult modelComparison(@PathVariable UUID matchId) {
+        return matchTrackingUseCase.modelComparison(matchId);
     }
 }

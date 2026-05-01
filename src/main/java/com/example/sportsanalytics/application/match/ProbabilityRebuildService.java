@@ -1,7 +1,11 @@
 package com.example.sportsanalytics.application.match;
 
 import com.example.sportsanalytics.application.match.dto.ProbabilitySnapshotView;
+import com.example.sportsanalytics.application.match.dto.ProbabilityTimelinePoint;
 import com.example.sportsanalytics.application.match.dto.RebuildProbabilityResult;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonCalculator;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonPoint;
+import com.example.sportsanalytics.analytics.comparison.ModelComparisonResult;
 import com.example.sportsanalytics.domain.model.CoverageMode;
 import com.example.sportsanalytics.domain.model.FeatureSnapshot;
 import com.example.sportsanalytics.domain.model.MatchState;
@@ -40,6 +44,7 @@ public class ProbabilityRebuildService {
     private final FeatureSnapshotRepository featureSnapshotRepository;
     private final ProbabilitySnapshotRepository probabilitySnapshotRepository;
     private final ProbabilityEngine probabilityEngine;
+    private final ModelComparisonCalculator modelComparisonCalculator = new ModelComparisonCalculator();
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -117,6 +122,29 @@ public class ProbabilityRebuildService {
         return probabilitySnapshotRepository.findFirstLatestByMatchId(matchId)
                 .map(this::view)
                 .orElseThrow(() -> new MatchNotFoundException(matchId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProbabilityTimelinePoint> probabilityTimeline(UUID matchId) {
+        if (!matchRepository.existsById(matchId)) {
+            throw new MatchNotFoundException(matchId);
+        }
+        Map<String, MatchStateEntity> statesByEvent = matchStateRepository.findByMatch_IdOrderByVersionAsc(matchId).stream()
+                .collect(Collectors.toMap(this::eventKey, Function.identity(), (first, second) -> second, LinkedHashMap::new));
+        return probabilitySnapshotRepository.findByMatchIdOrderByTimeline(matchId).stream()
+                .map(probability -> timelinePoint(probability, statesByEvent.get(eventKey(probability.getEvent()))))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ModelComparisonResult modelComparison(UUID matchId) {
+        MatchEntity match = matchRepository.findById(matchId).orElseThrow(() -> new MatchNotFoundException(matchId));
+        Map<String, FeatureSnapshotEntity> featuresByEvent = featureSnapshotRepository.findByMatchIdOrderByTimeline(matchId).stream()
+                .collect(Collectors.toMap(this::eventKey, Function.identity(), (first, second) -> second, LinkedHashMap::new));
+        List<ModelComparisonPoint> points = probabilitySnapshotRepository.findByMatchIdOrderByTimeline(matchId).stream()
+                .map(probability -> comparisonPoint(probability, featuresByEvent.get(eventKey(probability.getEvent()))))
+                .toList();
+        return modelComparisonCalculator.compare(matchId, match.getProviderMatchId(), points);
     }
 
     private void persist(
@@ -254,6 +282,44 @@ public class ProbabilityRebuildService {
                 stringList(entity.getExplanationsJson()),
                 doubleMap(entity.getFeatureContributionsJson()),
                 entity.getCreatedAt()
+        );
+    }
+
+    private ProbabilityTimelinePoint timelinePoint(ProbabilitySnapshotEntity entity, MatchStateEntity state) {
+        MatchEventEntity event = entity.getEvent();
+        return new ProbabilityTimelinePoint(
+                entity.getId(),
+                entity.getMatch().getId(),
+                event == null ? null : event.getId(),
+                event == null ? null : event.getEventSequence(),
+                entity.getMinute(),
+                state == null ? 0 : state.getHomeScore(),
+                state == null ? 0 : state.getAwayScore(),
+                entity.getHomeWin(),
+                entity.getDraw(),
+                entity.getAwayWin(),
+                entity.getModelVersion(),
+                entity.getModelConfidence(),
+                entity.getCoverageQuality(),
+                stringList(entity.getExplanationsJson()),
+                doubleMap(entity.getFeatureContributionsJson()),
+                entity.getCreatedAt()
+        );
+    }
+
+    private ModelComparisonPoint comparisonPoint(ProbabilitySnapshotEntity entity, FeatureSnapshotEntity feature) {
+        MatchEventEntity event = entity.getEvent();
+        Probability provider = feature == null ? null : providerProbability(feature.getFeaturesJson().path("providerProbability"));
+        return new ModelComparisonPoint(
+                event == null ? null : event.getId(),
+                event == null ? null : event.getEventSequence(),
+                entity.getMinute(),
+                entity.getHomeWin(),
+                entity.getDraw(),
+                entity.getAwayWin(),
+                provider == null ? null : provider.homeWin(),
+                provider == null ? null : provider.draw(),
+                provider == null ? null : provider.awayWin()
         );
     }
 

@@ -1,5 +1,6 @@
 package com.example.sportsanalytics.api.error;
 
+import com.example.sportsanalytics.application.backtest.BacktestRunNotFoundException;
 import com.example.sportsanalytics.application.match.MatchNotFoundException;
 import com.example.sportsanalytics.sportradar.client.MissingSportradarApiKeyException;
 import com.example.sportsanalytics.sportradar.client.SportradarNotFoundException;
@@ -35,6 +36,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MatchNotFoundException.class)
     ProblemDetail matchNotFound(MatchNotFoundException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(BacktestRunNotFoundException.class)
+    ProblemDetail backtestRunNotFound(BacktestRunNotFoundException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
