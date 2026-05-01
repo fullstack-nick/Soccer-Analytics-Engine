@@ -45,6 +45,9 @@ public class LiveSportradarMapper {
         for (JsonNode timeline : JsonNodes.array(payload, "sport_event_timelines")) {
             collectTimelineBatch(timeline, sourceType, rawPayloadId, batches);
         }
+        for (JsonNode delta : JsonNodes.array(payload, "sport_event_timeline_deltas")) {
+            collectTimelineBatch(delta, sourceType, rawPayloadId, batches);
+        }
         for (JsonNode timeline : JsonNodes.array(payload, "timelines")) {
             collectTimelineBatch(timeline, sourceType, rawPayloadId, batches);
         }

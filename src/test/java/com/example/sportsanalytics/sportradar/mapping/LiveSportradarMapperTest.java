@@ -67,4 +67,34 @@ class LiveSportradarMapperTest {
         assertThat(event.eventType()).isEqualTo(MatchEventType.SHOT);
         assertThat(event.sourceTimelineType()).isEqualTo(TimelineSourceType.LIVE_DELTA);
     }
+
+    @Test
+    void extractsTimelineDeltaBatchesFromSportradarDeltaWrapper() throws Exception {
+        JsonNode payload = objectMapper.readTree("""
+                {
+                  "sport_event_timeline_deltas": [
+                    {
+                      "sport_event_timeline": {
+                        "sport_event": {"id": "sr:sport_event:9"},
+                        "timeline": [
+                          {"id": 101, "type": "corner_kick", "match_time": 52, "competitor": "away"}
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """);
+        UUID rawPayloadId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+        List<LiveTimelineEventBatch> batches = mapper.timelineBatches(
+                payload,
+                TimelineSourceType.LIVE_DELTA,
+                rawPayloadId
+        );
+
+        assertThat(batches).hasSize(1);
+        assertThat(batches.getFirst().providerMatchId()).isEqualTo("sr:sport_event:9");
+        assertThat(batches.getFirst().events()).hasSize(1);
+        assertThat(batches.getFirst().events().getFirst().eventType()).isEqualTo(MatchEventType.SET_PIECE);
+    }
 }

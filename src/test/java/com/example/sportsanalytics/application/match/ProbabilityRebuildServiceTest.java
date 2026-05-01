@@ -19,6 +19,7 @@ import com.example.sportsanalytics.persistence.entity.MatchEventEntity;
 import com.example.sportsanalytics.persistence.entity.MatchStateEntity;
 import com.example.sportsanalytics.persistence.entity.ProbabilitySnapshotEntity;
 import com.example.sportsanalytics.persistence.repository.FeatureSnapshotRepository;
+import com.example.sportsanalytics.persistence.repository.MatchAlertRepository;
 import com.example.sportsanalytics.persistence.repository.MatchRepository;
 import com.example.sportsanalytics.persistence.repository.MatchStateRepository;
 import com.example.sportsanalytics.persistence.repository.ProbabilitySnapshotRepository;
@@ -44,11 +45,13 @@ class ProbabilityRebuildServiceTest {
     private final MatchStateRepository matchStateRepository = mock(MatchStateRepository.class);
     private final FeatureSnapshotRepository featureSnapshotRepository = mock(FeatureSnapshotRepository.class);
     private final ProbabilitySnapshotRepository probabilitySnapshotRepository = mock(ProbabilitySnapshotRepository.class);
+    private final MatchAlertRepository matchAlertRepository = mock(MatchAlertRepository.class);
     private final ProbabilityRebuildService service = new ProbabilityRebuildService(
             matchRepository,
             matchStateRepository,
             featureSnapshotRepository,
             probabilitySnapshotRepository,
+            matchAlertRepository,
             new ExpectedGoalsProbabilityEngine(),
             objectMapper,
             Clock.fixed(NOW, ZoneOffset.UTC)
@@ -69,11 +72,14 @@ class ProbabilityRebuildServiceTest {
         assertThat(service.rebuild(MATCH_ID).probabilitySnapshotsCreated()).isEqualTo(1);
         assertThat(service.rebuild(MATCH_ID).probabilitySnapshotsCreated()).isEqualTo(1);
 
-        InOrder inOrder = inOrder(probabilitySnapshotRepository);
+        InOrder inOrder = inOrder(matchAlertRepository, probabilitySnapshotRepository);
+        inOrder.verify(matchAlertRepository).deleteAllByMatchId(MATCH_ID);
         inOrder.verify(probabilitySnapshotRepository).deleteByMatchId(MATCH_ID);
         inOrder.verify(probabilitySnapshotRepository).save(any(ProbabilitySnapshotEntity.class));
+        inOrder.verify(matchAlertRepository).deleteAllByMatchId(MATCH_ID);
         inOrder.verify(probabilitySnapshotRepository).deleteByMatchId(MATCH_ID);
         inOrder.verify(probabilitySnapshotRepository).save(any(ProbabilitySnapshotEntity.class));
+        verify(matchAlertRepository, times(2)).deleteAllByMatchId(MATCH_ID);
         verify(probabilitySnapshotRepository, times(2)).deleteByMatchId(MATCH_ID);
         verify(probabilitySnapshotRepository, times(2)).save(any(ProbabilitySnapshotEntity.class));
     }

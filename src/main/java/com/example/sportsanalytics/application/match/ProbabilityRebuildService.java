@@ -18,6 +18,7 @@ import com.example.sportsanalytics.persistence.entity.MatchEventEntity;
 import com.example.sportsanalytics.persistence.entity.MatchStateEntity;
 import com.example.sportsanalytics.persistence.entity.ProbabilitySnapshotEntity;
 import com.example.sportsanalytics.persistence.repository.FeatureSnapshotRepository;
+import com.example.sportsanalytics.persistence.repository.MatchAlertRepository;
 import com.example.sportsanalytics.persistence.repository.MatchRepository;
 import com.example.sportsanalytics.persistence.repository.MatchStateRepository;
 import com.example.sportsanalytics.persistence.repository.ProbabilitySnapshotRepository;
@@ -43,6 +44,7 @@ public class ProbabilityRebuildService {
     private final MatchStateRepository matchStateRepository;
     private final FeatureSnapshotRepository featureSnapshotRepository;
     private final ProbabilitySnapshotRepository probabilitySnapshotRepository;
+    private final MatchAlertRepository matchAlertRepository;
     private final ProbabilityEngine probabilityEngine;
     private final ModelComparisonCalculator modelComparisonCalculator = new ModelComparisonCalculator();
     private final ObjectMapper objectMapper;
@@ -54,11 +56,12 @@ public class ProbabilityRebuildService {
             MatchStateRepository matchStateRepository,
             FeatureSnapshotRepository featureSnapshotRepository,
             ProbabilitySnapshotRepository probabilitySnapshotRepository,
+            MatchAlertRepository matchAlertRepository,
             ProbabilityEngine probabilityEngine,
             ObjectMapper objectMapper
     ) {
         this(matchRepository, matchStateRepository, featureSnapshotRepository, probabilitySnapshotRepository,
-                probabilityEngine, objectMapper, Clock.systemUTC());
+                matchAlertRepository, probabilityEngine, objectMapper, Clock.systemUTC());
     }
 
     ProbabilityRebuildService(
@@ -66,6 +69,7 @@ public class ProbabilityRebuildService {
             MatchStateRepository matchStateRepository,
             FeatureSnapshotRepository featureSnapshotRepository,
             ProbabilitySnapshotRepository probabilitySnapshotRepository,
+            MatchAlertRepository matchAlertRepository,
             ProbabilityEngine probabilityEngine,
             ObjectMapper objectMapper,
             Clock clock
@@ -74,6 +78,7 @@ public class ProbabilityRebuildService {
         this.matchStateRepository = matchStateRepository;
         this.featureSnapshotRepository = featureSnapshotRepository;
         this.probabilitySnapshotRepository = probabilitySnapshotRepository;
+        this.matchAlertRepository = matchAlertRepository;
         this.probabilityEngine = probabilityEngine;
         this.objectMapper = objectMapper;
         this.clock = clock;
@@ -87,6 +92,7 @@ public class ProbabilityRebuildService {
         Map<String, MatchStateEntity> statesByEvent = states.stream()
                 .collect(Collectors.toMap(this::eventKey, Function.identity(), (first, second) -> second, LinkedHashMap::new));
 
+        matchAlertRepository.deleteAllByMatchId(matchId);
         probabilitySnapshotRepository.deleteByMatchId(matchId);
         Instant now = clock.instant();
         int created = 0;
