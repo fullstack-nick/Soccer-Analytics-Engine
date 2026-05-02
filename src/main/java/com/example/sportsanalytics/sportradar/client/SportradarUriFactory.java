@@ -29,7 +29,7 @@ public class SportradarUriFactory {
                 .map(this::encodeSegment)
                 .reduce("", (left, right) -> left + "/" + right);
         String query = "api_key=" + encodeSegment(apiKey);
-        return URI.create(baseUrl + encodedPath + "?" + query);
+        return URI.create(baseUrl + withJsonSuffix(encodedPath) + "?" + query);
     }
 
     public String requestPath(SportradarEndpoint endpoint, String providerId) {
@@ -39,10 +39,14 @@ public class SportradarUriFactory {
                 "v4",
                 properties.getSportradar().getLocale()
         );
-        return "/" + String.join("/", base) + "/" + String.join("/", endpoint.pathSegments(providerId));
+        return withJsonSuffix("/" + String.join("/", base) + "/" + String.join("/", endpoint.pathSegments(providerId)));
     }
 
     private String encodeSegment(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private String withJsonSuffix(String path) {
+        return path.endsWith(".json") ? path : path + ".json";
     }
 }

@@ -14,9 +14,9 @@ class SportradarUriFactoryTest {
         String uri = factory.buildUri(SportradarEndpoint.SPORT_EVENT_SUMMARY, "sr:sport_event:70075140", "secret").toString();
         String requestPath = factory.requestPath(SportradarEndpoint.SPORT_EVENT_SUMMARY, "sr:sport_event:70075140");
 
-        assertThat(uri).contains("/sport_events/sr%3Asport_event%3A70075140/summary");
+        assertThat(uri).contains("/sport_events/sr%3Asport_event%3A70075140/summary.json");
         assertThat(uri).contains("api_key=secret");
-        assertThat(requestPath).isEqualTo("/soccer-extended/trial/v4/en/sport_events/sr:sport_event:70075140/summary");
+        assertThat(requestPath).isEqualTo("/soccer-extended/trial/v4/en/sport_events/sr:sport_event:70075140/summary.json");
         assertThat(requestPath).doesNotContain("secret").doesNotContain("api_key");
     }
 

@@ -36,7 +36,7 @@ class CachedSportradarClientTest {
         when(repository.findFirstByProviderIdAndSourceEndpointAndRequestPathAndExpiresAtAfterOrderByFetchedAtDesc(
                 "sr:sport_event:1",
                 "summary",
-                "/soccer-extended/trial/v4/en/sport_events/sr:sport_event:1/summary",
+                "/soccer-extended/trial/v4/en/sport_events/sr:sport_event:1/summary.json",
                 clock.instant()
         )).thenReturn(Optional.of(cached));
 
@@ -56,7 +56,7 @@ class CachedSportradarClientTest {
                 .thenReturn(new SportradarHttpResponse(
                         SportradarEndpoint.SPORT_EVENT_SUMMARY,
                         "sr:sport_event:1",
-                        "/soccer-extended/trial/v4/en/sport_events/sr:sport_event:1/summary",
+                        "/soccer-extended/trial/v4/en/sport_events/sr:sport_event:1/summary.json",
                         200,
                         "max-age=30, public",
                         clock.instant(),
@@ -89,7 +89,7 @@ class CachedSportradarClientTest {
         entity.setCacheControl("max-age=30, public");
         entity.setExpiresAt(clock.instant().plusSeconds(30));
         entity.setProviderPackage("soccer-extended");
-        entity.setRequestPath("/soccer-extended/trial/v4/en/sport_events/sr:sport_event:1/summary");
+        entity.setRequestPath("/soccer-extended/trial/v4/en/sport_events/sr:sport_event:1/summary.json");
         entity.setPayloadJson(objectMapper.readTree("{\"cached\":true}"));
         return entity;
     }
