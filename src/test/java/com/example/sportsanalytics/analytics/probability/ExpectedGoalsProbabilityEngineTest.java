@@ -106,12 +106,27 @@ class ExpectedGoalsProbabilityEngineTest {
         ProbabilitySnapshot snapshot = engine.calculate(state(90, 3, 0), richFeature(90, 3));
 
         Probability probability = snapshot.probability();
-        assertThat(snapshot.modelVersion()).isEqualTo("xg-poisson-v1.1");
+        assertThat(snapshot.modelVersion()).isEqualTo("xg-poisson-v1.2");
         assertThat(snapshot.featureContributions()).containsKey("confidenceShrinkage");
+        assertThat(snapshot.featureContributions()).containsKey("lateGameConfidenceShrinkage");
         assertThat(probability.homeWin()).isBetween(0.0, 1.0);
         assertThat(probability.draw()).isBetween(0.0, 1.0);
         assertThat(probability.awayWin()).isBetween(0.0, 1.0);
         assertThat(probability.homeWin() + probability.draw() + probability.awayWin()).isCloseTo(1.0, withinTolerance());
+    }
+
+    @Test
+    void lateGameSmoothingOnlyAppliesToConfidentLateSnapshots() {
+        ProbabilitySnapshot minute74 = engine.calculate(state(74, 1, 0), richFeature(74, 1));
+        ProbabilitySnapshot minute80 = engine.calculate(state(80, 1, 0), richFeature(80, 1));
+        ProbabilitySnapshot minute88 = engine.calculate(state(88, 1, 0), richFeature(88, 1));
+
+        assertThat(minute74.featureContributions().get("lateGameConfidenceShrinkage")).isEqualTo(0.0);
+        assertThat(minute80.featureContributions().get("lateGameConfidenceShrinkage")).isBetween(0.0, 0.08);
+        assertThat(minute88.featureContributions().get("lateGameConfidenceShrinkage")).isBetween(0.0, 0.12);
+        assertThat(minute88.probability().homeWin()).isLessThan(1.0);
+        assertThat(minute88.probability().homeWin() + minute88.probability().draw() + minute88.probability().awayWin())
+                .isCloseTo(1.0, withinTolerance());
     }
 
     private MatchState state(int minute, int homeScore, int awayScore) {

@@ -244,7 +244,7 @@ class BacktestServiceTest {
         probability.setHomeWin(home);
         probability.setDraw(draw);
         probability.setAwayWin(away);
-        probability.setModelVersion("xg-poisson-v1.1");
+        probability.setModelVersion("xg-poisson-v1.2");
         probability.setModelConfidence(0.80);
         probability.setCoverageQuality("HIGH");
         probability.setExplanationsJson(objectMapper.createArrayNode());

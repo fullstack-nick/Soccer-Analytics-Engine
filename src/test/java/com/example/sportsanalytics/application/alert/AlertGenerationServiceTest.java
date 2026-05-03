@@ -108,7 +108,7 @@ class AlertGenerationServiceTest {
         entity.setHomeWin(home);
         entity.setDraw(draw);
         entity.setAwayWin(away);
-        entity.setModelVersion("xg-poisson-v1.1");
+        entity.setModelVersion("xg-poisson-v1.2");
         entity.setCoverageQuality("HIGH");
         entity.setExplanationsJson(objectMapper.createArrayNode());
         entity.setFeatureContributionsJson(objectMapper.createObjectNode());

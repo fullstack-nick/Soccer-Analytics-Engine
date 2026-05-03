@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
-    public static final String MODEL_VERSION = "xg-poisson-v1.1";
+    public static final String MODEL_VERSION = "xg-poisson-v1.2";
 
     private static final int MAX_REMAINING_GOALS = 8;
     private static final double MIN_EXPECTED_GOALS = 0.02;
@@ -69,8 +69,11 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
                 awayExpectedGoalsRemaining
         );
         double shrinkage = confidenceShrinkage(rawProbability);
-        Probability probability = shrink(rawProbability, shrinkage);
+        Probability confidenceSmoothed = shrink(rawProbability, shrinkage);
         contributions.put("confidenceShrinkage", shrinkage);
+        double lateGameShrinkage = lateGameConfidenceShrinkage(features.minute(), confidenceSmoothed);
+        Probability probability = shrink(confidenceSmoothed, lateGameShrinkage);
+        contributions.put("lateGameConfidenceShrinkage", lateGameShrinkage);
 
         double confidence = modelConfidence(features);
         String coverageQuality = coverageQuality(confidence);
@@ -164,6 +167,18 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
             return 0.0;
         }
         return Math.min(0.10, (maxProbability - 0.80) * 0.25);
+    }
+
+    private double lateGameConfidenceShrinkage(int minute, Probability probability) {
+        if (minute < 75) {
+            return 0.0;
+        }
+        double maxProbability = Math.max(probability.homeWin(), Math.max(probability.draw(), probability.awayWin()));
+        if (maxProbability <= 0.75) {
+            return 0.0;
+        }
+        double cap = minute >= 85 ? 0.12 : 0.08;
+        return Math.min(cap, (maxProbability - 0.75) * 0.30);
     }
 
     private Probability shrink(Probability probability, double shrinkage) {
