@@ -282,6 +282,7 @@ class MatchTrackingControllerTest {
                 active ? null : Instant.parse("2026-04-30T00:10:00Z"),
                 Instant.parse("2026-04-30T00:05:00Z"),
                 Instant.parse("2026-04-30T00:05:00Z"),
+                Instant.parse("2026-04-30T00:04:00Z"),
                 null,
                 0,
                 null,

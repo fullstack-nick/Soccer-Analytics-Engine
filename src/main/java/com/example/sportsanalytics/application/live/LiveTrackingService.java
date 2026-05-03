@@ -137,6 +137,7 @@ public class LiveTrackingService {
                 tracking.getStoppedAt(),
                 tracking.getLastPollAt(),
                 tracking.getLastSuccessAt(),
+                tracking.getLastRichTimelineRefreshAt(),
                 tracking.getLastErrorAt(),
                 tracking.getErrorCount(),
                 tracking.getLastError(),

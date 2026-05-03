@@ -6,6 +6,7 @@ import com.example.sportsanalytics.application.match.MatchEventIngestionService;
 import com.example.sportsanalytics.application.match.MatchStateRebuildService;
 import com.example.sportsanalytics.application.match.dto.EventWriteCounts;
 import com.example.sportsanalytics.config.SportsAnalyticsProperties;
+import com.example.sportsanalytics.domain.model.CoverageMode;
 import com.example.sportsanalytics.domain.model.LiveTrackingStatus;
 import com.example.sportsanalytics.domain.model.TimelineSourceType;
 import com.example.sportsanalytics.persistence.entity.LiveMatchTrackingEntity;
@@ -27,11 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class LivePollingService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LivePollingService.class);
     private static final String LIVE_PROVIDER_ID = "live";
 
     private final SportsAnalyticsProperties properties;
@@ -145,7 +149,12 @@ public class LivePollingService {
         int alerts = 0;
         for (LiveMatchTrackingEntity tracking : active) {
             try {
-                PollMatchResult result = processTracking(tracking, batchesByProvider.get(tracking.getProviderMatchId()), now);
+                List<LiveTimelineEventBatch> matchBatches = new ArrayList<>(
+                        batchesByProvider.getOrDefault(tracking.getProviderMatchId(), List.of())
+                );
+                RichRefreshResult richRefresh = richRefresh(tracking, now);
+                matchBatches.addAll(richRefresh.batches());
+                PollMatchResult result = processTracking(tracking, matchBatches, now);
                 inserted += result.inserted();
                 updated += result.updated();
                 alerts += result.alertsCreated();
@@ -153,6 +162,10 @@ public class LivePollingService {
                 tracking.setLastDeltaPayload(rawPayloadReference(delta.rawPayloadId()));
                 if (fullTimeline != null) {
                     tracking.setLastFullTimelinePayload(rawPayloadReference(fullTimeline.rawPayloadId()));
+                }
+                if (richRefresh.payloadId() != null) {
+                    tracking.setLastRichTimelinePayload(rawPayloadReference(richRefresh.payloadId()));
+                    tracking.setLastRichTimelineRefreshAt(now);
                 }
                 LiveScheduleEntry schedule = scheduleByProvider.get(tracking.getProviderMatchId());
                 if (schedule != null && schedule.ended()) {
@@ -170,6 +183,28 @@ public class LivePollingService {
             }
         }
         return new LivePollResult(active.size(), processed, inserted, updated, ended, alerts);
+    }
+
+    private RichRefreshResult richRefresh(LiveMatchTrackingEntity tracking, Instant now) {
+        if (!shouldFetchRichTimeline(tracking, now)) {
+            return RichRefreshResult.empty();
+        }
+        try {
+            SportradarPayload payload = sportradarClient.fetch(
+                    SportradarEndpoint.SPORT_EVENT_EXTENDED_TIMELINE,
+                    tracking.getProviderMatchId(),
+                    true
+            );
+            List<LiveTimelineEventBatch> batches = liveMapper
+                    .timelineBatches(payload.payload(), TimelineSourceType.EXTENDED, payload.rawPayloadId())
+                    .stream()
+                    .filter(batch -> tracking.getProviderMatchId().equals(batch.providerMatchId()))
+                    .toList();
+            return new RichRefreshResult(payload.rawPayloadId(), batches);
+        } catch (RuntimeException exception) {
+            LOGGER.debug("Live rich timeline refresh skipped for {}: {}", tracking.getProviderMatchId(), exception.getMessage());
+            return RichRefreshResult.empty();
+        }
     }
 
     private PollMatchResult processTracking(
@@ -209,6 +244,19 @@ public class LivePollingService {
                 >= properties.getLive().getFullTimelineRefreshMs();
     }
 
+    private boolean shouldFetchRichTimeline(LiveMatchTrackingEntity tracking, Instant now) {
+        if (!properties.getLive().isRichRefreshEnabled()
+                || tracking.getMatch().getCoverageMode() != CoverageMode.RICH) {
+            return false;
+        }
+        Instant lastRefresh = tracking.getLastRichTimelineRefreshAt();
+        if (lastRefresh == null && tracking.getLastRichTimelinePayload() != null) {
+            lastRefresh = tracking.getLastRichTimelinePayload().getFetchedAt();
+        }
+        return lastRefresh == null
+                || Duration.between(lastRefresh, now).toMillis() >= properties.getLive().getRichRefreshMs();
+    }
+
     private void markSuccess(LiveMatchTrackingEntity tracking, Instant now) {
         tracking.setLastPollAt(now);
         tracking.setLastSuccessAt(now);
@@ -242,5 +290,15 @@ public class LivePollingService {
     }
 
     private record PollMatchResult(int inserted, int updated, int alertsCreated) {
+    }
+
+    private record RichRefreshResult(UUID payloadId, List<LiveTimelineEventBatch> batches) {
+        private RichRefreshResult {
+            batches = List.copyOf(batches == null ? List.of() : batches);
+        }
+
+        static RichRefreshResult empty() {
+            return new RichRefreshResult(null, List.of());
+        }
     }
 }

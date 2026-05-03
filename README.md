@@ -124,6 +124,8 @@ SPORTRADAR_MAX_RETRIES=2
 SPORTS_LIVE_ENABLED=false
 SPORTS_LIVE_POLL_DELAY_MS=10000
 SPORTS_LIVE_FULL_TIMELINE_REFRESH_MS=60000
+SPORTS_LIVE_RICH_REFRESH_ENABLED=true
+SPORTS_LIVE_RICH_REFRESH_MS=120000
 SPORTS_LIVE_MAX_MATCHES_PER_TICK=3
 ```
 
@@ -181,6 +183,12 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/matches/$matchId/
 Invoke-RestMethod "http://localhost:8080/api/matches/live"
 Invoke-RestMethod -Method Delete -Uri "http://localhost:8080/api/matches/$matchId/track"
 ```
+
+When live tracking is enabled, timeline delta remains the frequent low-cost
+path. For tracked `RICH` matches, the app also performs a quota-aware rich
+refresh against `sport_events/{id}/extended_timeline` every
+`SPORTS_LIVE_RICH_REFRESH_MS` milliseconds. That keeps xG and coordinate
+features fresh when the cheaper live feeds do not include those fields.
 
 ## Probability Model
 

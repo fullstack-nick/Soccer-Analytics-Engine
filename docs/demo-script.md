@@ -180,6 +180,8 @@ Only do this when quota allows it.
 
 ```powershell
 $env:SPORTS_LIVE_ENABLED = "true"
+$env:SPORTS_LIVE_RICH_REFRESH_ENABLED = "true"
+$env:SPORTS_LIVE_RICH_REFRESH_MS = "120000"
 ```
 
 Restart the app, then use Swagger:
@@ -197,6 +199,8 @@ Talking points:
 - Scheduled polling is disabled by default.
 - Live timeline deltas flow into the same `match_events` table and rebuild
   pipeline used by historical matches.
+- For `RICH` matches, the optional rich refresh keeps xG and coordinates fresh
+  by periodically fetching `sport_events/{id}/extended_timeline`.
 
 ## Model Limits To State Clearly
 

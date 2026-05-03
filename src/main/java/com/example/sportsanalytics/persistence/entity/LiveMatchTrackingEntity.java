@@ -71,6 +71,13 @@ public class LiveMatchTrackingEntity {
     @JoinColumn(name = "last_full_timeline_payload_id")
     private RawPayloadEntity lastFullTimelinePayload;
 
+    @Column(name = "last_rich_timeline_refresh_at")
+    private Instant lastRichTimelineRefreshAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "last_rich_timeline_payload_id")
+    private RawPayloadEntity lastRichTimelinePayload;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

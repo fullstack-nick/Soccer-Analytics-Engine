@@ -25,6 +25,7 @@ public record LiveTrackingView(
         Instant stoppedAt,
         Instant lastPollAt,
         Instant lastSuccessAt,
+        Instant lastRichTimelineRefreshAt,
         Instant lastErrorAt,
         int errorCount,
         String lastError,

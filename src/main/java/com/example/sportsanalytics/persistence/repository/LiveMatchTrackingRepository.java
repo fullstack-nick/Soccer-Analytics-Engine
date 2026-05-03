@@ -13,9 +13,9 @@ public interface LiveMatchTrackingRepository extends JpaRepository<LiveMatchTrac
 
     List<LiveMatchTrackingEntity> findByActiveTrueAndTrackingStatusOrderByUpdatedAtAsc(LiveTrackingStatus trackingStatus);
 
-    @EntityGraph(attributePaths = "match")
+    @EntityGraph(attributePaths = {"match", "lastRichTimelinePayload"})
     List<LiveMatchTrackingEntity> findByActiveTrueOrderByUpdatedAtAsc();
 
-    @EntityGraph(attributePaths = "match")
+    @EntityGraph(attributePaths = {"match", "lastRichTimelinePayload"})
     List<LiveMatchTrackingEntity> findByOrderByUpdatedAtDesc();
 }

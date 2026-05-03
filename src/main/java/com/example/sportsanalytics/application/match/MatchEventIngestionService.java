@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MatchEventIngestionService {
@@ -48,6 +49,7 @@ public class MatchEventIngestionService {
         this.clock = clock;
     }
 
+    @Transactional
     public EventWriteCounts upsertEvents(MatchEntity match, List<NormalizedTimelineEvent> events) {
         int inserted = 0;
         int updated = 0;
