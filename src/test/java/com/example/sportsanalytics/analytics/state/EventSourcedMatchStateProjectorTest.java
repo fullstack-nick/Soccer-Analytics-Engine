@@ -29,7 +29,7 @@ class EventSourcedMatchStateProjectorTest {
                 event(1, "match_started", MatchEventType.PERIOD, TeamSide.UNKNOWN, 0, 0, 0, false),
                 event(2, "score_change", MatchEventType.GOAL, TeamSide.HOME, 30, 1, 0, true),
                 event(3, "possible_goal", MatchEventType.SHOT, TeamSide.HOME, 44, null, null, false),
-                event(4, "red_card", MatchEventType.CARD, TeamSide.AWAY, 65, null, null, false),
+                event(4, "red_card", MatchEventType.RED_CARD, TeamSide.AWAY, 65, null, null, false),
                 event(5, "substitution", MatchEventType.SUBSTITUTION, TeamSide.HOME, 70, null, null, false)
         );
 
@@ -50,6 +50,7 @@ class EventSourcedMatchStateProjectorTest {
         assertThat(latest.homeScore()).isEqualTo(1);
         assertThat(latest.awayScore()).isEqualTo(0);
         assertThat(latest.awayRedCards()).isEqualTo(1);
+        assertThat(latest.stateJson().path("cards").path("away").path("red").asInt()).isEqualTo(1);
         assertThat(latest.stateJson().path("substitutions").path("home").asInt()).isEqualTo(1);
         assertThat(latest.stateJson().path("accumulatedStats").path("home").path("confirmedGoals").asInt()).isEqualTo(1);
         assertThat(latest.stateJson().path("accumulatedStats").path("home").path("shots").asInt()).isEqualTo(1);

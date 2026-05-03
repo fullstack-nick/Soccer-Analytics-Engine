@@ -320,7 +320,13 @@ public class AlertGenerationService {
     }
 
     private boolean isRedCard(MatchEventEntity event) {
-        if (event == null || event.getEventType() != MatchEventType.CARD) {
+        if (event == null || event.getEventType() == null) {
+            return false;
+        }
+        if (event.getEventType().isRedCardEvent()) {
+            return true;
+        }
+        if (!event.getEventType().isCardEvent()) {
             return false;
         }
         String type = text(event.getProviderEventType());

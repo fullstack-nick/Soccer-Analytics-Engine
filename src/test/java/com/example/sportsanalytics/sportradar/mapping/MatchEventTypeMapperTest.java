@@ -32,4 +32,15 @@ class MatchEventTypeMapperTest {
         assertThat(mapper.map("injury_return", false)).isEqualTo(MatchEventType.INJURY);
         assertThat(mapper.map("injury_time_shown", false)).isEqualTo(MatchEventType.INJURY);
     }
+
+    @Test
+    void mapsCardProviderEventsIntoSpecificCardSemantics() {
+        assertThat(mapper.map("yellow_card", false)).isEqualTo(MatchEventType.YELLOW_CARD);
+        assertThat(mapper.map("red_card", false)).isEqualTo(MatchEventType.RED_CARD);
+        assertThat(mapper.map("yellow_red_card", false)).isEqualTo(MatchEventType.SECOND_YELLOW_RED_CARD);
+        assertThat(mapper.map("second_yellow_card", false)).isEqualTo(MatchEventType.SECOND_YELLOW_RED_CARD);
+        assertThat(mapper.map("booking", false)).isEqualTo(MatchEventType.YELLOW_CARD);
+        assertThat(mapper.map("card", false)).isEqualTo(MatchEventType.UNKNOWN_CARD);
+        assertThat(mapper.map("foul", false, "red card")).isEqualTo(MatchEventType.RED_CARD);
+    }
 }

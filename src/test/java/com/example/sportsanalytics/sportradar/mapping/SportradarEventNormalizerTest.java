@@ -36,7 +36,7 @@ class SportradarEventNormalizerTest {
         assertThat(events.get(2).homeScoreAfter()).isEqualTo(1);
         assertThat(events.get(2).awayScoreAfter()).isEqualTo(0);
         assertThat(events.get(2).xgValue()).isEqualTo(0.33);
-        assertThat(events.get(3).eventType()).isEqualTo(MatchEventType.CARD);
+        assertThat(events.get(3).eventType()).isEqualTo(MatchEventType.RED_CARD);
         assertThat(events.get(3).outcome()).contains("red");
     }
 

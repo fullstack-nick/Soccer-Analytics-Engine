@@ -80,7 +80,7 @@ public class SportradarEventNormalizer {
                     normalizedProviderEventId,
                     providerType,
                     sequence,
-                    eventTypeMapper.map(providerType, scoreChanged),
+                    eventTypeMapper.map(providerType, scoreChanged, outcome),
                     minute == null ? 0 : minute,
                     stoppageTime,
                     side,
@@ -162,7 +162,7 @@ public class SportradarEventNormalizer {
                         || event.eventType() == MatchEventType.SHOT
                         || event.eventType() == MatchEventType.PASS
                         || event.eventType() == MatchEventType.FOUL
-                        || event.eventType() == MatchEventType.CARD
+                        || event.eventType().isCardEvent()
                         || event.eventType() == MatchEventType.SUBSTITUTION
                         || event.eventType() == MatchEventType.SET_PIECE
                         || event.eventType() == MatchEventType.OFFSIDE

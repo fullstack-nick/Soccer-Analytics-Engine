@@ -145,7 +145,7 @@ public class SoccerIntelligenceSteps {
         List<MatchEventView> events = matchTrackingUseCase.events(tracked.matchId(), null);
         timeline = matchTrackingUseCase.probabilityTimeline(tracked.matchId());
         MatchEventView redCard = events.stream()
-                .filter(event -> event.eventType() == MatchEventType.CARD)
+                .filter(event -> event.eventType().isRedCardEvent())
                 .findFirst()
                 .orElseThrow();
         ProbabilityTimelinePoint after = timeline.stream()

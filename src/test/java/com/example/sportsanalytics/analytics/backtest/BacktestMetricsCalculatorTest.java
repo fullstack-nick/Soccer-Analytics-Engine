@@ -90,6 +90,33 @@ class BacktestMetricsCalculatorTest {
         assertThat(buckets.get("86-89").sampleCount()).isZero();
     }
 
+    @Test
+    void eventMovementKeepsSpecificCardTypesSeparate() {
+        BacktestMetrics metrics = calculator.calculate(List.of(new BacktestMatchSample(
+                UUID.fromString("44444444-4444-4444-4444-444444444444"),
+                "sr:sport_event:4",
+                Outcome.HOME_WIN,
+                List.of(
+                        sample(1L, "PERIOD", 0, 0, 0, 0.40, 0.35, 0.25, null, null, null),
+                        sample(2L, "YELLOW_CARD", 20, 0, 0, 0.41, 0.34, 0.25, null, null, null),
+                        sample(3L, "RED_CARD", 40, 0, 0, 0.55, 0.30, 0.15, null, null, null),
+                        sample(4L, "SECOND_YELLOW_RED_CARD", 70, 0, 0, 0.66, 0.24, 0.10, null, null, null)
+                )
+        )));
+
+        assertThat(metrics.eventMovement()).containsKeys(
+                "YELLOW_CARD",
+                "RED_CARD",
+                "SECOND_YELLOW_RED_CARD"
+        );
+        assertThat(metrics.eventMovement().get("YELLOW_CARD"))
+                .isCloseTo(0.02, org.assertj.core.data.Offset.offset(0.000001));
+        assertThat(metrics.eventMovement().get("RED_CARD"))
+                .isCloseTo(0.28, org.assertj.core.data.Offset.offset(0.000001));
+        assertThat(metrics.eventMovement().get("SECOND_YELLOW_RED_CARD"))
+                .isCloseTo(0.22, org.assertj.core.data.Offset.offset(0.000001));
+    }
+
     private BacktestProbabilitySample sample(
             Long eventSequence,
             String eventType,

@@ -10,12 +10,29 @@ public class MatchEventTypeMapper {
     }
 
     public MatchEventType map(String providerType, boolean scoreChanged) {
-        if (providerType == null || providerType.isBlank()) {
+        return map(providerType, scoreChanged, null);
+    }
+
+    public MatchEventType map(String providerType, boolean scoreChanged, String descriptor) {
+        if ((providerType == null || providerType.isBlank()) && (descriptor == null || descriptor.isBlank())) {
             return MatchEventType.UNKNOWN;
         }
-        String type = providerType.toLowerCase();
+        String type = normalize(providerType);
+        String text = (type + " " + normalize(descriptor)).trim();
         if (scoreChanged && isConfirmedGoalType(type)) {
             return MatchEventType.GOAL;
+        }
+        if (isSecondYellowRedCard(text)) {
+            return MatchEventType.SECOND_YELLOW_RED_CARD;
+        }
+        if (isStraightRedCard(text)) {
+            return MatchEventType.RED_CARD;
+        }
+        if (isYellowCard(text)) {
+            return MatchEventType.YELLOW_CARD;
+        }
+        if (type.contains("card") || text.contains("booking")) {
+            return MatchEventType.UNKNOWN_CARD;
         }
         if (type.equals("penalty_awarded") || type.equals("penalty_missed") || type.equals("penalty_saved")) {
             return MatchEventType.PENALTY;
@@ -41,9 +58,6 @@ public class MatchEventTypeMapper {
         if (type.contains("foul") || type.contains("free_kick")) {
             return MatchEventType.FOUL;
         }
-        if (type.contains("card") || type.contains("booking")) {
-            return MatchEventType.CARD;
-        }
         if (type.contains("substitution")) {
             return MatchEventType.SUBSTITUTION;
         }
@@ -68,5 +82,34 @@ public class MatchEventTypeMapper {
                 || type.equals("own_goal")
                 || type.equals("penalty_goal")
                 || type.equals("penalty_shootout_scored");
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.toLowerCase().replace('-', '_').trim();
+    }
+
+    private boolean isSecondYellowRedCard(String text) {
+        return text.contains("yellow_red")
+                || text.contains("yellow red")
+                || text.contains("second_yellow")
+                || text.contains("second yellow")
+                || text.contains("2nd_yellow")
+                || text.contains("2nd yellow");
+    }
+
+    private boolean isStraightRedCard(String text) {
+        return text.contains("red_card")
+                || text.contains("red card")
+                || text.contains("straight_red")
+                || text.contains("straight red")
+                || text.contains("sent_off")
+                || text.contains("sent off")
+                || text.contains("dismissal");
+    }
+
+    private boolean isYellowCard(String text) {
+        return text.contains("yellow_card")
+                || text.contains("yellow card")
+                || text.contains("booking");
     }
 }

@@ -114,10 +114,28 @@ public class EventSourcedMatchStateProjector {
 
     private void applyCard(StateAccumulator accumulator, MatchEventEntity event) {
         TeamSide side = event.getTeamSide();
+        MatchEventType eventType = event.getEventType();
         String value = normalizedEventText(event);
-        boolean yellowRed = value.contains("yellow_red") || value.contains("yellow red");
-        boolean red = yellowRed || value.contains("red");
-        boolean yellow = yellowRed || value.contains("yellow");
+        boolean yellowRed = eventType == MatchEventType.SECOND_YELLOW_RED_CARD
+                || value.contains("yellow_red")
+                || value.contains("yellow red")
+                || value.contains("second_yellow")
+                || value.contains("second yellow")
+                || value.contains("2nd_yellow")
+                || value.contains("2nd yellow");
+        boolean red = eventType == MatchEventType.RED_CARD
+                || yellowRed
+                || value.contains("red_card")
+                || value.contains("red card")
+                || value.contains("straight_red")
+                || value.contains("straight red")
+                || value.contains("sent_off")
+                || value.contains("sent off");
+        boolean yellow = eventType == MatchEventType.YELLOW_CARD
+                || yellowRed
+                || value.contains("yellow_card")
+                || value.contains("yellow card")
+                || value.contains("booking");
         if (side == TeamSide.HOME) {
             if (yellow) {
                 accumulator.homeYellowCards++;
@@ -378,14 +396,19 @@ public class EventSourcedMatchStateProjector {
                     awayXg += event.getXgValue();
                 }
             }
-            switch (event.getEventType()) {
+            MatchEventType eventType = event.getEventType();
+            if (eventType == null) {
+                return;
+            }
+            if (eventType.isCardEvent()) {
+                incrementSide(event.getTeamSide(), Counter.CARD);
+                applyCard(this, event);
+                return;
+            }
+            switch (eventType) {
                 case SHOT -> incrementSide(event.getTeamSide(), Counter.SHOT);
                 case PASS -> incrementSide(event.getTeamSide(), Counter.PASS);
                 case FOUL -> incrementSide(event.getTeamSide(), Counter.FOUL);
-                case CARD -> {
-                    incrementSide(event.getTeamSide(), Counter.CARD);
-                    applyCard(this, event);
-                }
                 case SUBSTITUTION -> incrementSide(event.getTeamSide(), Counter.SUBSTITUTION);
                 case PERIOD -> applyPeriodStatus(event);
                 default -> {
