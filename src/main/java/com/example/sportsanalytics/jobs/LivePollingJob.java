@@ -32,7 +32,7 @@ public class LivePollingJob {
         try {
             pollingService.pollOnce();
         } catch (RuntimeException exception) {
-            LOGGER.warn("Live polling tick failed: {}", exception.getMessage());
+            LOGGER.warn("Live polling tick failed", exception);
         } finally {
             running.set(false);
         }
