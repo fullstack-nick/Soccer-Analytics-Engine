@@ -147,7 +147,7 @@ Sportradar quota:
 $env:SPORTS_LIVE_ENABLED = "true"
 $env:SPORTRADAR_REQUEST_DELAY_MS = "1100"
 $env:SPORTS_LIVE_RICH_REFRESH_ENABLED = "true"
-$env:SPORTS_LIVE_RICH_REFRESH_MS = "120000"
+$env:SPORTS_LIVE_RICH_REFRESH_MS = "10000"
 ```
 
 Restart the app, then:

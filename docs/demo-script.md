@@ -181,7 +181,7 @@ Only do this when quota allows it.
 ```powershell
 $env:SPORTS_LIVE_ENABLED = "true"
 $env:SPORTS_LIVE_RICH_REFRESH_ENABLED = "true"
-$env:SPORTS_LIVE_RICH_REFRESH_MS = "120000"
+$env:SPORTS_LIVE_RICH_REFRESH_MS = "10000"
 ```
 
 Restart the app, then use Swagger:

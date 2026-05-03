@@ -74,7 +74,7 @@ class LivePollingServiceTest {
         properties.getLive().setEnabled(true);
         properties.getLive().setMaxMatchesPerTick(1);
         properties.getLive().setRichRefreshEnabled(true);
-        properties.getLive().setRichRefreshMs(120_000);
+        properties.getLive().setRichRefreshMs(10_000);
         SportradarClient sportradarClient = mock(SportradarClient.class);
         LiveSportradarMapper liveMapper = mock(LiveSportradarMapper.class);
         LiveMatchTrackingRepository trackingRepository = mock(LiveMatchTrackingRepository.class);

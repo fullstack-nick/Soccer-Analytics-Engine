@@ -58,9 +58,9 @@ sports:
   live:
     enabled: ${SPORTS_LIVE_ENABLED:false}
     poll-delay-ms: ${SPORTS_LIVE_POLL_DELAY_MS:10000}
-    full-timeline-refresh-ms: ${SPORTS_LIVE_FULL_TIMELINE_REFRESH_MS:60000}
+    full-timeline-refresh-ms: ${SPORTS_LIVE_FULL_TIMELINE_REFRESH_MS:10000}
     rich-refresh-enabled: ${SPORTS_LIVE_RICH_REFRESH_ENABLED:true}
-    rich-refresh-ms: ${SPORTS_LIVE_RICH_REFRESH_MS:120000}
+    rich-refresh-ms: ${SPORTS_LIVE_RICH_REFRESH_MS:10000}
     max-matches-per-tick: ${SPORTS_LIVE_MAX_MATCHES_PER_TICK:3}
     divergence-alert-threshold: ${SPORTS_LIVE_DIVERGENCE_ALERT_THRESHOLD:0.12}
     red-card-swing-threshold: ${SPORTS_LIVE_RED_CARD_SWING_THRESHOLD:0.10}

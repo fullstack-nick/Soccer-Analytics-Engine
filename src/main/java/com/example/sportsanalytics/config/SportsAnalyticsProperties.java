@@ -54,12 +54,12 @@ public class SportsAnalyticsProperties {
         private long pollDelayMs = 10_000;
 
         @Min(1000)
-        private long fullTimelineRefreshMs = 60_000;
+        private long fullTimelineRefreshMs = 10_000;
 
         private boolean richRefreshEnabled = true;
 
         @Min(1000)
-        private long richRefreshMs = 120_000;
+        private long richRefreshMs = 10_000;
 
         @Min(1)
         private int maxMatchesPerTick = 3;

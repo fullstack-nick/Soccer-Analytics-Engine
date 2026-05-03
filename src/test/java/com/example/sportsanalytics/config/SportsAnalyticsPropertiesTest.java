@@ -23,8 +23,9 @@ class SportsAnalyticsPropertiesTest {
             assertThat(properties.getSportradar().getMaxRetries()).isEqualTo(2);
             assertThat(properties.getLive().isEnabled()).isFalse();
             assertThat(properties.getLive().getPollDelayMs()).isEqualTo(10_000);
+            assertThat(properties.getLive().getFullTimelineRefreshMs()).isEqualTo(10_000);
             assertThat(properties.getLive().isRichRefreshEnabled()).isTrue();
-            assertThat(properties.getLive().getRichRefreshMs()).isEqualTo(120_000);
+            assertThat(properties.getLive().getRichRefreshMs()).isEqualTo(10_000);
             assertThat(properties.getLive().getMaxMatchesPerTick()).isEqualTo(3);
         });
     }
