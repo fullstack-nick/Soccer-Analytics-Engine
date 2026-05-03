@@ -1,0 +1,32 @@
+{
+  "sport_event": {
+    "id": "sr:sport_event:demo-rich",
+    "start_time": "2026-04-30T18:00:00Z",
+    "sport_event_context": {
+      "season": { "id": "sr:season:demo-rich" },
+      "competition": { "id": "sr:competition:demo" }
+    },
+    "coverage": {
+      "sport_event_properties": {
+        "lineups": true,
+        "formations": true,
+        "extended_play_by_play": true,
+        "basic_play_by_play": true,
+        "deeper_play_by_play": true,
+        "ballspotting": true,
+        "scores": "live",
+        "game_clock": true
+      }
+    },
+    "competitors": [
+      { "id": "sr:competitor:home-demo", "name": "Home Analytics FC", "qualifier": "home" },
+      { "id": "sr:competitor:away-demo", "name": "Away Model United", "qualifier": "away" }
+    ]
+  },
+  "sport_event_status": {
+    "status": "closed",
+    "match_status": "ended",
+    "home_score": 2,
+    "away_score": 1
+  }
+}

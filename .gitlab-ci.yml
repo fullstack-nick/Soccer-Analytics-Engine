@@ -4,8 +4,11 @@ stages:
 
 image: eclipse-temurin:21-jdk
 
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
 cache:
-  key: maven
+  key: "$CI_COMMIT_REF_SLUG"
   paths:
     - .m2/repository
 

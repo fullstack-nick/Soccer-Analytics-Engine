@@ -1,0 +1,27 @@
+{
+  "lineups": {
+    "competitors": [
+      {
+        "id": "sr:competitor:home-demo",
+        "name": "Home Analytics FC",
+        "qualifier": "home",
+        "formation": "4-3-3",
+        "players": [
+          { "id": "sr:player:demo-1", "name": "Creator", "starter": true },
+          { "id": "sr:player:demo-2", "name": "Shooter", "starter": true },
+          { "id": "sr:player:demo-4", "name": "Late Scorer", "starter": true }
+        ]
+      },
+      {
+        "id": "sr:competitor:away-demo",
+        "name": "Away Model United",
+        "qualifier": "away",
+        "formation": "4-2-3-1",
+        "players": [
+          { "id": "sr:player:demo-3", "name": "Equalizer", "starter": true },
+          { "id": "sr:player:demo-5", "name": "Defender", "starter": true }
+        ]
+      }
+    ]
+  }
+}

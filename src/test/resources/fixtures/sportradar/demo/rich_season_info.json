@@ -1,0 +1,8 @@
+{
+  "coverage": {
+    "basic_play_by_play": true,
+    "deeper_play_by_play": true,
+    "extended_play_by_play": true,
+    "lineups": true
+  }
+}

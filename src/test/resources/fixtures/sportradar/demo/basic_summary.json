@@ -1,0 +1,20 @@
+{
+  "sport_event": {
+    "id": "sr:sport_event:demo-basic",
+    "start_time": "2026-04-30T20:00:00Z",
+    "sport_event_context": {
+      "season": { "id": "sr:season:demo-basic" },
+      "competition": { "id": "sr:competition:basic" }
+    },
+    "competitors": [
+      { "id": "sr:competitor:basic-home", "name": "Basic Home", "qualifier": "home" },
+      { "id": "sr:competitor:basic-away", "name": "Basic Away", "qualifier": "away" }
+    ]
+  },
+  "sport_event_status": {
+    "status": "closed",
+    "match_status": "ended",
+    "home_score": 0,
+    "away_score": 0
+  }
+}

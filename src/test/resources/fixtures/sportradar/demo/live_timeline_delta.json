@@ -1,0 +1,20 @@
+{
+  "sport_events": [
+    {
+      "sport_event": { "id": "sr:sport_event:demo-rich" },
+      "timeline": [
+        {
+          "id": 108,
+          "type": "shot_on_target",
+          "match_time": 82,
+          "competitor": "home",
+          "x": 86,
+          "y": 48,
+          "home_score": 2,
+          "away_score": 1,
+          "outcome": "saved"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "probabilities": [
+    {
+      "sport_event": { "id": "sr:sport_event:demo-rich" },
+      "markets": [
+        {
+          "name": "3way",
+          "outcomes": [
+            { "name": "home", "probability": 0.18 },
+            { "name": "draw", "probability": 0.62 },
+            { "name": "away", "probability": 0.20 }
+          ]
+        }
+      ]
+    }
+  ]
+}

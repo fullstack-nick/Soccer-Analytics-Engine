@@ -1,0 +1,22 @@
+{
+  "standings": [
+    {
+      "competitor": { "id": "sr:competitor:home-demo" },
+      "statistics": {
+        "points": 30,
+        "played": 15,
+        "goals_for": 26,
+        "goals_against": 14
+      }
+    },
+    {
+      "competitor": { "id": "sr:competitor:away-demo" },
+      "statistics": {
+        "points": 19,
+        "played": 15,
+        "goals_for": 18,
+        "goals_against": 20
+      }
+    }
+  ]
+}

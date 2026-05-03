@@ -1,0 +1,28 @@
+{
+  "statistics": {
+    "totals": {
+      "competitors": [
+        {
+          "id": "sr:competitor:home-demo",
+          "qualifier": "home",
+          "statistics": {
+            "goals_expected": 1.7,
+            "shots_on_target": 5,
+            "passes_total": 460,
+            "ball_possession": 57
+          }
+        },
+        {
+          "id": "sr:competitor:away-demo",
+          "qualifier": "away",
+          "statistics": {
+            "goals_expected": 0.8,
+            "shots_on_target": 2,
+            "passes_total": 330,
+            "ball_possession": 43
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "standings": [
+    { "competitor": { "id": "sr:competitor:home-demo" }, "form": "WWDLW" },
+    { "competitor": { "id": "sr:competitor:away-demo" }, "form": "LDLLW" }
+  ]
+}

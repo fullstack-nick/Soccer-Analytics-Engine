@@ -1,0 +1,8 @@
+{
+  "sport_event": {
+    "id": "sr:sport_event:malformed"
+  },
+  "sport_event_status": {
+    "status": "closed"
+  }
+}
