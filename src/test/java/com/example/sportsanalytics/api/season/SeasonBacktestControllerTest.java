@@ -71,7 +71,7 @@ class SeasonBacktestControllerTest {
         return new BacktestRunView(
                 RUN_ID,
                 "sr:season:1",
-                "xg-poisson-v1.2",
+                "xg-poisson-v1.3",
                 "COMPLETED",
                 1,
                 1,
@@ -94,3 +94,4 @@ class SeasonBacktestControllerTest {
         }
     }
 }
+

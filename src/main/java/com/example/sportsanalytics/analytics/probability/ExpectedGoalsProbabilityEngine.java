@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
-    public static final String MODEL_VERSION = "xg-poisson-v1.2";
+    public static final String MODEL_VERSION = "xg-poisson-v1.3";
 
     private static final int MAX_REMAINING_GOALS = 8;
     private static final double MIN_EXPECTED_GOALS = 0.02;
@@ -68,10 +68,17 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
                 homeExpectedGoalsRemaining,
                 awayExpectedGoalsRemaining
         );
-        double shrinkage = confidenceShrinkage(rawProbability);
-        Probability confidenceSmoothed = shrink(rawProbability, shrinkage);
+        double pressureSupport = directionalPressureSupport(features);
+        contributions.put("directionalPressureSupport", pressureSupport);
+
+        double drawBoost = levelScoreDrawBoost(state, features, pressureSupport);
+        Probability drawAdjustedProbability = boostDraw(rawProbability, drawBoost);
+        contributions.put("levelScoreDrawBoost", drawBoost);
+
+        double shrinkage = confidenceShrinkage(drawAdjustedProbability);
+        Probability confidenceSmoothed = shrink(drawAdjustedProbability, shrinkage);
         contributions.put("confidenceShrinkage", shrinkage);
-        double lateGameShrinkage = lateGameConfidenceShrinkage(features.minute(), confidenceSmoothed);
+        double lateGameShrinkage = lateGameConfidenceShrinkage(features.minute(), confidenceSmoothed, state, pressureSupport);
         Probability probability = shrink(confidenceSmoothed, lateGameShrinkage);
         contributions.put("lateGameConfidenceShrinkage", lateGameShrinkage);
 
@@ -169,16 +176,33 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
         return Math.min(0.10, (maxProbability - 0.80) * 0.25);
     }
 
-    private double lateGameConfidenceShrinkage(int minute, Probability probability) {
+    private double lateGameConfidenceShrinkage(
+            int minute,
+            Probability probability,
+            MatchState state,
+            double pressureSupport
+    ) {
         if (minute < 75) {
             return 0.0;
         }
         double maxProbability = Math.max(probability.homeWin(), Math.max(probability.draw(), probability.awayWin()));
-        if (maxProbability <= 0.75) {
+        if (maxProbability <= 0.72) {
             return 0.0;
         }
-        double cap = minute >= 85 ? 0.12 : 0.08;
-        return Math.min(cap, (maxProbability - 0.75) * 0.30);
+        OutcomeSide topSide = topSide(probability);
+        if (topSide == OutcomeSide.DRAW) {
+            return 0.0;
+        }
+        double cap = minute >= 85 ? 0.22 : 0.14;
+        double shrinkage = Math.min(cap, (maxProbability - 0.72) * 0.55);
+        double pressureAlignment = pressureAlignment(topSide, pressureSupport);
+        if (pressureAlignment > 0.0) {
+            shrinkage *= 1.0 - Math.min(0.45, pressureAlignment * 0.45);
+        }
+        if (scoreLeaderMatches(topSide, state)) {
+            shrinkage *= 0.85;
+        }
+        return shrinkage;
     }
 
     private Probability shrink(Probability probability, double shrinkage) {
@@ -191,6 +215,72 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
                 (probability.draw() * (1.0 - shrinkage)) + (uniform * shrinkage),
                 (probability.awayWin() * (1.0 - shrinkage)) + (uniform * shrinkage)
         );
+    }
+
+    private double levelScoreDrawBoost(MatchState state, FeatureSnapshot features, double pressureSupport) {
+        if (state.homeScore() != state.awayScore() || features.minute() < 60) {
+            return 0.0;
+        }
+        double boost = 0.07;
+        if (features.minute() >= 75) {
+            boost = 0.13;
+        }
+        if (features.minute() >= 85) {
+            boost = 0.18;
+        }
+        return boost * (1.0 - (Math.abs(pressureSupport) * 0.50));
+    }
+
+    private Probability boostDraw(Probability probability, double drawBoost) {
+        if (drawBoost <= 0.0) {
+            return probability;
+        }
+        return new Probability(
+                probability.homeWin() * (1.0 - drawBoost),
+                (probability.draw() * (1.0 - drawBoost)) + drawBoost,
+                probability.awayWin() * (1.0 - drawBoost)
+        );
+    }
+
+    private double directionalPressureSupport(FeatureSnapshot features) {
+        double direction = 0.0;
+        direction += normalized(features.xgDelta(), 0.9) * 0.35;
+        direction += normalized(features.shotPressureDelta(), 5.0) * 0.20;
+        direction += normalized(features.shotLocationQualityDelta(), 0.8) * 0.15;
+        direction += normalized(features.fieldTilt(), 1.0) * 0.15;
+        direction += normalized(features.possessionPressureDelta(), 1.0) * 0.10;
+        direction += normalized(features.momentumTrend(), 20.0) * 0.05;
+        return clamp(direction, -1.0, 1.0);
+    }
+
+    private double normalized(Double value, double scale) {
+        if (value == null || !Double.isFinite(value) || scale <= 0.0) {
+            return 0.0;
+        }
+        return clamp(value / scale, -1.0, 1.0);
+    }
+
+    private OutcomeSide topSide(Probability probability) {
+        if (probability.homeWin() >= probability.draw() && probability.homeWin() >= probability.awayWin()) {
+            return OutcomeSide.HOME;
+        }
+        if (probability.awayWin() >= probability.homeWin() && probability.awayWin() >= probability.draw()) {
+            return OutcomeSide.AWAY;
+        }
+        return OutcomeSide.DRAW;
+    }
+
+    private double pressureAlignment(OutcomeSide side, double pressureSupport) {
+        return switch (side) {
+            case HOME -> Math.max(0.0, pressureSupport);
+            case AWAY -> Math.max(0.0, -pressureSupport);
+            case DRAW -> 0.0;
+        };
+    }
+
+    private boolean scoreLeaderMatches(OutcomeSide side, MatchState state) {
+        return (side == OutcomeSide.HOME && state.homeScore() > state.awayScore())
+                || (side == OutcomeSide.AWAY && state.awayScore() > state.homeScore());
     }
 
     private double[] poissonDistribution(double lambda) {
@@ -285,5 +375,11 @@ public class ExpectedGoalsProbabilityEngine implements ProbabilityEngine {
             return minimum;
         }
         return Math.max(minimum, Math.min(maximum, value));
+    }
+
+    private enum OutcomeSide {
+        HOME,
+        DRAW,
+        AWAY
     }
 }

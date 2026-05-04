@@ -106,7 +106,7 @@ class ExpectedGoalsProbabilityEngineTest {
         ProbabilitySnapshot snapshot = engine.calculate(state(90, 3, 0), richFeature(90, 3));
 
         Probability probability = snapshot.probability();
-        assertThat(snapshot.modelVersion()).isEqualTo("xg-poisson-v1.2");
+        assertThat(snapshot.modelVersion()).isEqualTo("xg-poisson-v1.3");
         assertThat(snapshot.featureContributions()).containsKey("confidenceShrinkage");
         assertThat(snapshot.featureContributions()).containsKey("lateGameConfidenceShrinkage");
         assertThat(probability.homeWin()).isBetween(0.0, 1.0);
@@ -122,11 +122,35 @@ class ExpectedGoalsProbabilityEngineTest {
         ProbabilitySnapshot minute88 = engine.calculate(state(88, 1, 0), richFeature(88, 1));
 
         assertThat(minute74.featureContributions().get("lateGameConfidenceShrinkage")).isEqualTo(0.0);
-        assertThat(minute80.featureContributions().get("lateGameConfidenceShrinkage")).isBetween(0.0, 0.08);
-        assertThat(minute88.featureContributions().get("lateGameConfidenceShrinkage")).isBetween(0.0, 0.12);
+        assertThat(minute80.featureContributions().get("lateGameConfidenceShrinkage")).isBetween(0.0, 0.14);
+        assertThat(minute88.featureContributions().get("lateGameConfidenceShrinkage")).isBetween(0.0, 0.22);
         assertThat(minute88.probability().homeWin()).isLessThan(1.0);
         assertThat(minute88.probability().homeWin() + minute88.probability().draw() + minute88.probability().awayWin())
                 .isCloseTo(1.0, withinTolerance());
+    }
+
+    @Test
+    void levelScoreAfterSixtyGetsDrawCalibrationBoost() {
+        ProbabilitySnapshot minute59 = engine.calculate(state(59, 1, 1), neutralFeature(59, 0));
+        ProbabilitySnapshot minute75 = engine.calculate(state(75, 1, 1), neutralFeature(75, 0));
+        ProbabilitySnapshot minute86 = engine.calculate(state(86, 1, 1), neutralFeature(86, 0));
+
+        assertThat(minute59.featureContributions().get("levelScoreDrawBoost")).isEqualTo(0.0);
+        assertThat(minute75.featureContributions().get("levelScoreDrawBoost")).isGreaterThan(0.0);
+        assertThat(minute86.featureContributions().get("levelScoreDrawBoost"))
+                .isGreaterThan(minute75.featureContributions().get("levelScoreDrawBoost"));
+        assertThat(minute75.probability().draw()).isGreaterThan(minute59.probability().draw());
+    }
+
+    @Test
+    void strongPressureSupportReducesLateWinnerSmoothing() {
+        ProbabilitySnapshot weakSupport = engine.calculate(state(85, 1, 0), neutralFeature(85, 1));
+        ProbabilitySnapshot strongHomeSupport = engine.calculate(state(85, 1, 0), richFeature(85, 1));
+
+        assertThat(strongHomeSupport.featureContributions().get("directionalPressureSupport"))
+                .isGreaterThan(weakSupport.featureContributions().get("directionalPressureSupport"));
+        assertThat(strongHomeSupport.featureContributions().get("lateGameConfidenceShrinkage"))
+                .isLessThan(weakSupport.featureContributions().get("lateGameConfidenceShrinkage"));
     }
 
     private MatchState state(int minute, int homeScore, int awayScore) {
@@ -149,6 +173,30 @@ class ExpectedGoalsProbabilityEngineTest {
 
     private FeatureSnapshot richFeature(int minute, int scoreDifference) {
         return richFeatureBuilder(minute, scoreDifference).build();
+    }
+
+    private FeatureSnapshot neutralFeature(int minute, int scoreDifference) {
+        return new FeatureBuilder(minute, scoreDifference)
+                .coverageMode(CoverageMode.RICH)
+                .teamStrengthDelta(0.0)
+                .redCardAdjustment(0.0)
+                .xgDelta(0.0)
+                .shotPressureDelta(0.0)
+                .shotLocationQualityDelta(0.0)
+                .fieldTilt(0.0)
+                .possessionPressureDelta(0.0)
+                .momentumTrend(0.0)
+                .availableFeatures(List.of(
+                        "scoreDifference",
+                        "timeRemainingRatio",
+                        "homeAdvantage",
+                        "teamStrengthDelta",
+                        "xgDelta",
+                        "shotPressureDelta",
+                        "momentumTrend"
+                ))
+                .missingFeatures(List.of("providerProbability"))
+                .build();
     }
 
     private FeatureBuilder richFeatureBuilder(int minute, int scoreDifference) {
@@ -287,3 +335,4 @@ class ExpectedGoalsProbabilityEngineTest {
         }
     }
 }
+
