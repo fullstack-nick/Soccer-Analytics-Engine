@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface ProbabilitySnapshotRepository extends JpaRepository<ProbabilitySnapshotEntity, UUID> {
     @Query("""
             select p from ProbabilitySnapshotEntity p
-            left join p.event e
+            left join fetch p.event e
             where p.match.id = :matchId
             order by p.minute asc, coalesce(e.eventSequence, 0) asc, p.createdAt asc
             """)
@@ -20,7 +20,7 @@ public interface ProbabilitySnapshotRepository extends JpaRepository<Probability
 
     @Query("""
             select p from ProbabilitySnapshotEntity p
-            left join p.event e
+            left join fetch p.event e
             where p.match.id = :matchId
             order by p.minute desc, coalesce(e.eventSequence, 0) desc, p.createdAt desc
             """)
